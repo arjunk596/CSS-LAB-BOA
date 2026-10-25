@@ -9,6 +9,15 @@ Cryptography & System Security course.
 > network-isolated sandbox. Do not run these binaries outside the provided
 > Docker setup, deploy them anywhere public, or adapt them for real attacks.
 
+## Author
+
+**Bhushan Ladgaonkar**
+Roll No. 10611 — TE Computer Engineering, Division A
+Fr. Conceicao Rodrigues College of Engineering, Bandra (W), Mumbai
+(Autonomous College affiliated to University of Mumbai)
+
+Subject: Cryptography & System Security
+
 ## Status
 🚧 Under active development.
 
