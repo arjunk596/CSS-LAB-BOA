@@ -1,0 +1,10 @@
+# Normal input
+./vuln 3 99 -> arr[3] = 99 / Returned safely.
+
+# Out-of-bounds positive index
+./vuln 15 1 -> AddressSanitizer: stack-buffer-overflow / stack-buffer-underflow
+
+# Negative index
+./vuln -5 1 -> AddressSanitizer: stack-buffer-underflow
+
+# secure.c -> "Rejected: index out of bounds" for both, no crash

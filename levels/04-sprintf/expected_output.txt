@@ -1,0 +1,8 @@
+# Normal input
+./vuln "Bhushan" -> User: Bhushan / Returned safely.
+
+# Oversized input (40 'A's)
+./vuln "$(python3 -c "print('A'*40)")"
+-> AddressSanitizer: stack-buffer-overflow, WRITE, in vulnerable_format
+
+# secure.c -> "User: " + truncated input, no crash

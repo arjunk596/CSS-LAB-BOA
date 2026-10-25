@@ -1,0 +1,8 @@
+# Normal input
+./vuln "Bhushan" -> Hello, Bhushan / Returned safely.
+
+# Oversized input (40 'A's)
+./vuln "$(python3 -c "print('A'*40)")"
+-> AddressSanitizer: stack-buffer-overflow, WRITE, in vulnerable_concat
+
+# secure.c -> truncated concat, no crash
