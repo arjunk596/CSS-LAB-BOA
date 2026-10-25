@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSS-LAB-BOA — Lab Guide</title>
+<style>
+  :root {
+    --bg:#0e1410; --bg-raised:#141c17; --ink:#e8efe9; --ink-dim:#9fb3a6;
+    --rule:#28352d; --accent:#7fe0a0; --vuln:#e07a7a; --secure:#7fe0a0;
+    --mono:"SFMono-Regular","JetBrains Mono",Consolas,Menlo,monospace;
+    --serif:"Iowan Old Style","Georgia","Charter",serif;
+    color-scheme:dark;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+    --bg:#f3f1ea; --bg-raised:#fff; --ink:#1c2420; --ink-dim:#566058;
+    --rule:#d9d4c6; --accent:#1f7a46; --vuln:#a5342c; --secure:#1f7a46; } }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:calc(3.2rem + env(safe-area-inset-top,0px));}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.55;-webkit-font-smoothing:antialiased;}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:20;}
+
+  nav{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:10;
+    background:rgba(14,20,16,0.92); backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--rule); overflow-x:auto;
+  }
+  @media (prefers-color-scheme:light){ :root:not([data-theme="dark"]) nav{ background:rgba(243,241,234,0.92); } }
+  .navrow{display:flex; gap:1.3rem; padding:0.8rem 1.2rem; font-family:var(--mono); font-size:0.78rem; white-space:nowrap;}
+  .navrow a{color:var(--ink-dim); text-decoration:none;}
+  .navrow a:hover{color:var(--accent);}
+
+  .wrap{max-width:760px; margin:0 auto; padding:3rem 1.5rem 5rem;}
+  header.hero{margin-bottom:2.8rem;}
+  .kicker{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin:0 0 0.8rem;}
+  h1{font-size:clamp(1.8rem,5vw,2.5rem); line-height:1.14; margin:0 0 0.9rem; font-weight:600; letter-spacing:-0.01em; max-width:20ch;}
+  .tagline{font-size:1.05rem; color:var(--ink-dim); max-width:50ch; margin:0;}
+
+  section{margin:3.4rem 0; scroll-margin-top:3.5rem;}
+  h2{font-family:var(--mono); font-size:0.85rem; color:var(--accent); margin:0 0 1.1rem; font-weight:600;}
+  h3{font-size:1.15rem; margin:0; font-weight:600;}
+  p{max-width:68ch;}
+  .lede{color:var(--ink-dim);}
+  code,.mono{font-family:var(--mono);}
+  .fn{color:var(--vuln); font-family:var(--mono); font-size:0.95em;}
+  .fn.safe{color:var(--secure);}
+
+  .level{
+    background:var(--bg-raised); border:1px solid var(--rule); border-radius:8px;
+    margin-bottom:0.8rem; overflow:hidden;
+  }
+  .level summary{
+    list-style:none; cursor:pointer; padding:1rem 1.2rem;
+    display:flex; align-items:baseline; gap:0.8rem; justify-content:space-between;
+  }
+  .level summary::-webkit-details-marker{display:none;}
+  .level summary .num{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); min-width:1.4rem;}
+  .level summary .ttl{flex:1;}
+  .level summary .chev{font-family:var(--mono); color:var(--ink-dim); transition:transform 0.15s;}
+  .level[open] summary .chev{transform:rotate(90deg);}
+  .level .body{padding:0 1.2rem 1.2rem; border-top:1px solid var(--rule); padding-top:1rem;}
+  .level .body p{font-size:0.94rem;}
+  .level .row{display:flex; gap:0.6rem; margin:0.9rem 0 0.3rem; font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim);}
+  .bonus-tag{display:inline-block; font-family:var(--mono); font-size:0.68rem; color:#d9b15a; border:1px solid #d9b15a44; padding:0.1rem 0.45rem; border-radius:4px; margin-left:0.5rem;}
+
+  .snippet{background:var(--bg); border:1px solid var(--rule); border-radius:6px; padding:0.75rem 0.9rem; font-family:var(--mono); font-size:0.78rem; overflow-x:auto; margin:0.5rem 0;}
+  .snippet .k{color:var(--vuln);}
+  .snippet .k.safe{color:var(--secure);}
+
+  .faq{border-bottom:1px solid var(--rule); padding:1rem 0;}
+  .faq summary{cursor:pointer; list-style:none; font-weight:600; font-size:0.97rem; display:flex; justify-content:space-between; gap:1rem;}
+  .faq summary::-webkit-details-marker{display:none;}
+  .faq summary::after{content:"+"; font-family:var(--mono); color:var(--ink-dim); flex:none;}
+  .faq[open] summary::after{content:"–";}
+  .faq p{margin:0.7rem 0 0; font-size:0.93rem; color:var(--ink-dim);}
+
+  .links{display:grid; gap:0.5rem;}
+  .links a{
+    display:block; padding:0.75rem 0.9rem; background:var(--bg-raised); border:1px solid var(--rule);
+    border-radius:6px; color:var(--ink); text-decoration:none; font-size:0.92rem;
+  }
+  .links a .u{display:block; font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-top:0.2rem;}
+  .links a:hover{border-color:var(--accent);}
+
+  footer{margin-top:4rem; padding-top:1.5rem; border-top:1px solid var(--rule); font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim);}
+  a{color:var(--accent);}
+  @media (prefers-reduced-motion:no-preference){ .wrap{animation:rise 0.4s ease-out;} @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}} }
+</style>
+</head>
+<body>
+
+<nav><div class="navrow">
+  <a href="#start">Start here</a>
+  <a href="#theory">Theory</a>
+  <a href="#levels">Levels</a>
+  <a href="#howto">How to run</a>
+  <a href="#faq">FAQ</a>
+  <a href="#links">Links</a>
+</div></nav>
+
+<div class="wrap">
+
+  <header class="hero" id="start">
+    <p class="kicker">CSS-LAB-BOA <span style="opacity:0.6">/ student guide</span></p>
+    <h1>Learn buffer overflows by breaking them yourself.</h1>
+    <p class="tagline">Seven short levels. Each one is a real, intentionally broken C program running in an isolated sandbox — you feed it input, watch it fail, then see exactly why the fixed version doesn't.</p>
+  </header>
+
+  <section id="theory">
+    <h2>the idea in one minute</h2>
+    <p class="lede">A buffer is a fixed-size chunk of memory — say, 16 bytes for a name. C does not stop you from writing 40 bytes into it. The extra bytes spill into whatever memory sits next door: another variable, or — on the stack — the address the function is supposed to return to when it's done. Overwrite that address, and you can redirect what the program does next.</p>
+    <p class="lede">Every level below follows the same shape: a function that <em>can</em> be used safely but isn't, an input that proves it, and a safe rewrite sitting right next to it.</p>
+  </section>
+
+  <section id="levels">
+    <h2>the levels</h2>
+
+    <details class="level" open>
+      <summary><span class="num">01</span><span class="ttl"><h3><span class="fn">gets()</span> — unbounded read</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p><code>gets()</code> reads a line from input with no idea how big the destination buffer is — there's no length argument to give it one. It was removed from the C standard entirely because it cannot be used safely.</p>
+        <div class="snippet"><span class="k">gets</span>(buffer); <span style="color:var(--ink-dim)">// buffer[16], no size check possible</span></div>
+        <div class="row">TRY IT · pipe a 40-character string instead of a short name</div>
+        <p>The fix swaps in <code class="fn safe">fgets(buffer, sizeof(buffer), stdin)</code>, which always knows its own limit.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">02</span><span class="ttl"><h3><span class="fn">strcpy()</span> — unchecked copy</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>Copies a string until it hits a null byte — never checking whether the destination has room for what it's copying.</p>
+        <div class="snippet"><span class="k">strcpy</span>(dest, source); <span style="color:var(--ink-dim)">// copies all of source, regardless of dest's size</span></div>
+        <div class="row">TRY IT · pass a source string longer than the destination buffer</div>
+        <p>Fix: <code class="fn safe">strncpy(dest, source, sizeof(dest)-1)</code>, length-capped.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">03</span><span class="ttl"><h3><span class="fn">strcat()</span> — unchecked concatenation</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>Appends one string to the end of another, starting at the existing string's null terminator — with no sense of how much room is left.</p>
+        <div class="snippet"><span class="k">strcat</span>(dest, suffix);</div>
+        <div class="row">TRY IT · concatenate past the destination's remaining capacity</div>
+        <p>Fix: <code class="fn safe">strncat(dest, suffix, remaining_space)</code>.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">04</span><span class="ttl"><h3><span class="fn">sprintf()</span> — oversized formatted output</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>Formats values into a buffer with no limit on how long the result can get. A wide number, a long <code>%s</code>, or many arguments can all push past the buffer's end.</p>
+        <div class="snippet"><span class="k">sprintf</span>(buf, "%s", long_input);</div>
+        <div class="row">TRY IT · supply a long string for the %s argument</div>
+        <p>Fix: <code class="fn safe">snprintf(buf, sizeof(buf), ...)</code> — caps the output at the buffer's real size.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">05</span><span class="ttl"><h3><span class="fn">memcpy()</span> — incorrect byte count</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>Copies exactly the number of bytes you tell it to — correctly. The bug isn't the function, it's trusting a byte count that came from untrusted input.</p>
+        <div class="snippet"><span class="k">memcpy</span>(buf, data, user_supplied_len); <span style="color:var(--ink-dim)">// len never validated</span></div>
+        <div class="row">WIN CONDITION · overflow into the adjacent variable to flip access_granted</div>
+        <p>Fix: clamp <code>len</code> to <code>sizeof(buf)</code> before copying — bounds checking the count, not the function.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">06</span><span class="ttl"><h3>array indexing — invalid index</h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>C performs no bounds checking on <code>arr[i]</code> at all — a negative or oversized <code>i</code> reads or writes memory relative to the array, wherever that lands.</p>
+        <div class="snippet">arr[<span class="k">user_index</span>] = value; <span style="color:var(--ink-dim)">// no range check on user_index</span></div>
+        <div class="row">TRY IT · a negative index, not just one that's too large — ASan catches both</div>
+        <p>Fix: validate <code>0 &lt;= i &lt; size</code> before every access.</p>
+      </div>
+    </details>
+
+    <details class="level">
+      <summary><span class="num">07</span><span class="ttl"><h3>return-address overwrite <span class="bonus-tag">bonus</span></h3></span><span class="chev">›</span></summary>
+      <div class="body">
+        <p>The deepest level: overflow far enough past a buffer to overwrite the function's saved return address, redirecting execution into <code>secret_win()</code> — compiled into the binary but never called by the program itself.</p>
+        <p class="lede">This level runs with stack canaries, PIE, and ASLR deliberately disabled inside the sandbox, so the raw mechanism is visible. It's the one place in this lab those protections are switched off — everywhere else they're left on.</p>
+        <div class="row">GOAL · redirect control flow without ever calling secret_win() directly</div>
+      </div>
+    </details>
+  </section>
+
+  <section id="howto">
+    <h2>how to run a level</h2>
+    <p class="lede">Every level has a <code>vuln.c</code> and a <code>secure.c</code>. From inside the sandbox:</p>
+    <div class="snippet">cd /opt/levels/01-gets
+gcc -g -fsanitize=address -fno-stack-protector -o /tmp/vuln vuln.c
+echo "normal input" | /tmp/vuln        <span style="color:var(--ink-dim)"># should behave fine</span>
+python3 -c "print('A'*40)" | /tmp/vuln <span style="color:var(--ink-dim)"># should trip ASan</span></div>
+    <p class="lede">Then compare against the fix the same way, using <code>secure.c</code> instead.</p>
+  </section>
+
+  <section id="faq">
+    <h2>faq</h2>
+
+    <details class="faq"><summary>Is it actually safe to run broken code like this?</summary>
+      <p>Yes, inside the sandbox. Each session runs in a disposable Docker container with no network access, a read-only filesystem outside a small scratch area, and hard CPU/memory/process limits. Nothing escapes, nothing persists. Never run these binaries outside the provided container.</p>
+    </details>
+
+    <details class="faq"><summary>What is AddressSanitizer (ASan)?</summary>
+      <p>A compiler instrumentation (<code>-fsanitize=address</code>) that surrounds memory allocations with poisoned "redzones." Any read or write that touches one is caught immediately and reported with the exact faulting address and a stack trace — much more precise than waiting for a random crash.</p>
+    </details>
+
+    <details class="faq"><summary>Why are stack canaries and ASan turned off for some levels?</summary>
+      <p>To make the underlying vulnerability visible rather than immediately blocked. Each mitigation is disabled deliberately, one at a time, exactly where needed — never by default — which also makes a good viva topic: what each protection actually does, and why disabling it changes the outcome.</p>
+    </details>
+
+    <details class="faq"><summary>I got "Cannot create temporary file: Read-only file system" — now what?</summary>
+      <p>The sandbox's root filesystem is intentionally read-only. Compile into the writable scratch area instead, e.g. <code>-o /tmp/vuln</code>, which is mounted as a separate writable+executable tmpfs.</p>
+    </details>
+
+    <details class="faq"><summary>What's actually different between vuln.c and secure.c?</summary>
+      <p>Never the overall program — only the one function under study, swapped for its bounds-aware counterpart (<code>gets→fgets</code>, <code>strcpy→strncpy</code>, <code>strcat→strncat</code>, <code>sprintf→snprintf</code>, a clamped <code>memcpy</code> length, or a validated array index). Same input, different outcome.</p>
+    </details>
+
+    <details class="faq"><summary>Why does this matter outside a classroom?</summary>
+      <p>Buffer overflows are catalogued under CWE-120 and remain a recurring root cause in real CVEs — including the 1988 Morris Worm, which exploited a gets()-style overflow. They're a major reason memory-safe languages like Rust exist.</p>
+    </details>
+  </section>
+
+  <section id="links">
+    <h2>references &amp; further reading</h2>
+    <div class="links">
+      <a href="https://github.com/beeth73/CSS-LAB-BOA">Project repository<span class="u">github.com/beeth73/CSS-LAB-BOA</span></a>
+      <a href="https://cwe.mitre.org/data/definitions/120.html">CWE-120 — Buffer Copy without Checking Size of Input<span class="u">cwe.mitre.org</span></a>
+      <a href="https://clang.llvm.org/docs/AddressSanitizer.html">AddressSanitizer documentation<span class="u">clang.llvm.org</span></a>
+      <a href="https://owasp.org/www-community/vulnerabilities/Buffer_Overflow">OWASP — Buffer Overflow<span class="u">owasp.org</span></a>
+      <a href="https://pwn.college/">pwn.college — the inspiration for this lab's format<span class="u">pwn.college</span></a>
+    </div>
+  </section>
+
+  <footer>MIT licensed · educational use only · built for Cryptography &amp; System Security</footer>
+</div>
+</body>
+</html>
