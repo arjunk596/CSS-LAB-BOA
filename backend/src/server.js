@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { loadLevels } from "./levelRegistry.js";
 import {
@@ -9,8 +11,11 @@ import {
   destroySession,
 } from "./sessionManager.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 4000;
 const app = express();
+
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/api/levels", (_req, res) => {
   res.json(loadLevels());
@@ -18,15 +23,13 @@ app.get("/api/levels", (_req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`CSS-LAB-BOA backend listening on :${PORT}`);
+  console.log(`Open http://localhost:${PORT} in your browser`);
 });
 
 const wss = new WebSocketServer({ server, path: "/session" });
 
 wss.on("connection", async (ws) => {
-  let container;
-  let exec;
-  let stream;
-
+  let container, exec, stream;
   try {
     container = await createSession();
     ({ exec, stream } = await openShell(container));
@@ -37,25 +40,15 @@ wss.on("connection", async (ws) => {
     return;
   }
 
-  // Sandbox -> browser
-  stream.on("data", (chunk) => {
-    if (ws.readyState === ws.OPEN) ws.send(chunk);
-  });
+  stream.on("data", (chunk) => { if (ws.readyState === ws.OPEN) ws.send(chunk); });
   stream.on("end", () => ws.close());
 
-  // Browser -> sandbox. A JSON message ({type:"resize",cols,rows}) controls
-  // the pty size; any other message is raw keystroke/input bytes.
   ws.on("message", (data, isBinary) => {
     if (!isBinary) {
       try {
         const msg = JSON.parse(data.toString());
-        if (msg.type === "resize") {
-          resizeShell(exec, msg.cols, msg.rows);
-          return;
-        }
-      } catch (_) {
-        /* not JSON, fall through and treat as raw input */
-      }
+        if (msg.type === "resize") { resizeShell(exec, msg.cols, msg.rows); return; }
+      } catch (_) {}
     }
     stream.write(data);
   });
@@ -67,7 +60,6 @@ wss.on("connection", async (ws) => {
       console.log(`Session destroyed: container ${container.id.slice(0, 12)}`);
     }
   };
-
   ws.on("close", cleanup);
   ws.on("error", cleanup);
 });
