@@ -50,12 +50,35 @@
   .links a{display:block;padding:.7rem .85rem;background:var(--bg-raised);border:1px solid var(--rule);border-radius:6px;color:var(--ink);text-decoration:none;font-size:.9rem;}
   footer{margin-top:3.5rem;padding-top:1.3rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
   a{color:var(--accent);}
+
+  #vizwrap{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem;}
+  #vizbar{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:.74rem;color:var(--ink-dim);margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;}
+  .legend{display:flex;gap:.9rem;align-items:center;}
+  .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.3rem;vertical-align:middle;}
+  .sw.buf{background:#5aa7e0;} .sw.adj{background:var(--vuln);} .sw.rest{background:#2a332d;}
+  #vizgrid{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin-bottom:1rem;}
+  .cell{aspect-ratio:1;border-radius:3px;background:#1b241e;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.6rem;color:var(--ink-dim);transition:background .15s,transform .15s;}
+  .cell.buf{background:#1d3a52;} .cell.adj{background:#4a2020;}
+  .cell.hit{transform:scale(1.15);}
+  .cell.overflow{background:var(--vuln);color:#1a0a0a;font-weight:700;}
+  #vizcontrols{display:flex;gap:.5rem;flex-wrap:wrap;}
+  #vizinput{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:.5rem .7rem;color:var(--ink);font-family:var(--mono);font-size:.85rem;}
+  #vizcontrols button{background:var(--accent);color:#0a1410;border:none;border-radius:6px;padding:.5rem 1rem;font-family:var(--mono);font-size:.8rem;font-weight:700;cursor:pointer;}
+  #vizcontrols button#vizreset{background:transparent;color:var(--ink-dim);border:1px solid var(--rule);}
+
+  .qcard{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.1rem;margin-bottom:.8rem;}
+  .qcard p.qtext{font-weight:600;margin:0 0 .7rem;font-size:.95rem;}
+  .qopt{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:.55rem .8rem;margin-bottom:.4rem;color:var(--ink);font-size:.88rem;cursor:pointer;font-family:var(--serif);}
+  .qopt:hover{border-color:var(--accent);}
+  .qopt.correct{border-color:var(--secure);background:#132a1c;}
+  .qopt.wrong{border-color:var(--vuln);background:#2a1414;}
+  #quizscore{font-family:var(--mono);font-size:.9rem;color:var(--accent);margin-top:1rem;}
 </style>
 </head>
 <body>
 
 <nav><div class="navrow">
-  <a href="#run">Run a level</a><a href="#theory">Theory</a><a href="#levels">Levels</a><a href="#faq">FAQ</a><a href="#links">Links</a>
+  <a href="#run">Run a level</a><a href="#theory">Theory</a><a href="#levels">Levels</a><a href="#faq">FAQ</a><a href="#visualizer">Visualizer</a><a href="#quiz">Quiz</a><a href="#links">Links</a>
 </div></nav>
 
 <div class="wrap">
@@ -130,6 +153,31 @@ python3 -c "print('A'*40)" | /tmp/v</div>
     </details>
   </section>
 
+
+  <section id="visualizer">
+    <h2>stack visualizer</h2>
+    <p class="lede">A real WebAssembly module backs this — not a JS simulation. <code>write_byte</code> is an unchecked store with no bounds check, exactly like the C functions above. Type a payload and watch it march across a simulated 16-byte buffer into the 8 bytes right after it.</p>
+    <div id="vizwrap">
+      <div id="vizbar">
+        <span id="vizstatus">loading wasm…</span>
+        <span class="legend"><span class="sw buf"></span>buffer[16]<span class="sw adj"></span>adjacent[8]<span class="sw rest"></span>unused</span>
+      </div>
+      <div id="vizgrid"></div>
+      <div id="vizcontrols">
+        <input id="vizinput" type="text" placeholder="type a payload, e.g. AAAAAAAAAAAAAAAABBBB" maxlength="40">
+        <button id="vizwrite">Write</button>
+        <button id="vizreset">Reset</button>
+      </div>
+      <p id="vizmsg" class="lede" style="font-size:.85rem;"></p>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>quick check</h2>
+    <p class="lede">Six questions, drawn from the viva material. Scored instantly, nothing sent anywhere.</p>
+    <div id="quizwrap"></div>
+  </section>
+
   <section id="faq">
     <h2>faq</h2>
     <details class="faq"><summary>Is this actually safe to run?</summary><p>Yes — each session is a disposable, network-isolated Docker container with a read-only filesystem outside a small scratch area and hard resource limits. Never run these binaries outside the sandbox.</p></details>
@@ -168,6 +216,122 @@ python3 -c "print('A'*40)" | /tmp/v</div>
   ws.onclose = () => { dot.className = 'dead'; statustext.textContent = 'disconnected'; term.writeln('\r\n[session closed]'); };
   ws.onmessage = (ev) => term.write(new Uint8Array(ev.data));
   term.onData((data) => ws.send(data));
+</script>
+
+<script>
+// ---- Stack visualizer, backed by a real compiled WASM module ----
+(async () => {
+  const statusEl = document.getElementById('vizstatus');
+  const gridEl = document.getElementById('vizgrid');
+  const msgEl = document.getElementById('vizmsg');
+  const BUF_SIZE = 16, ADJ_SIZE = 8, TOTAL = BUF_SIZE + ADJ_SIZE;
+
+  for (let i = 0; i < TOTAL; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell ' + (i < BUF_SIZE ? 'buf' : 'adj');
+    c.id = 'cell' + i;
+    gridEl.appendChild(c);
+  }
+
+  let wasm;
+  try {
+    const resp = await fetch('/vendor/overflow.wasm');
+    const bytes = await resp.arrayBuffer();
+    const { instance } = await WebAssembly.instantiate(bytes);
+    wasm = instance.exports;
+    wasm.reset_region();
+    statusEl.textContent = 'wasm module loaded — ' + bytes.byteLength + ' bytes';
+  } catch (e) {
+    statusEl.textContent = 'failed to load wasm module';
+    console.error(e);
+    return;
+  }
+
+  function render() {
+    for (let i = 0; i < TOTAL; i++) {
+      const v = wasm.read_byte(i);
+      const el = document.getElementById('cell' + i);
+      el.textContent = v ? v.toString(16).padStart(2, '0') : '';
+      el.classList.remove('overflow');
+      if (i >= BUF_SIZE && v !== 0) el.classList.add('overflow');
+    }
+  }
+  render();
+
+  document.getElementById('vizwrite').addEventListener('click', async () => {
+    const input = document.getElementById('vizinput').value;
+    if (!input) return;
+    wasm.reset_region();
+    render();
+    for (let i = 0; i < input.length && i < TOTAL; i++) {
+      wasm.write_byte(i, input.charCodeAt(i));
+      render();
+      await new Promise(r => setTimeout(r, 60));
+    }
+    if (input.length > BUF_SIZE) {
+      msgEl.textContent = `Wrote ${input.length} bytes into a 16-byte buffer — ${input.length - BUF_SIZE} byte(s) landed in the adjacent region. This is the same mechanism as the strcpy()/gets() overflows above.`;
+    } else {
+      msgEl.textContent = `Wrote ${input.length} bytes — stayed within the 16-byte buffer, adjacent region untouched.`;
+    }
+  });
+
+  document.getElementById('vizreset').addEventListener('click', () => {
+    wasm.reset_region();
+    render();
+    msgEl.textContent = '';
+    document.getElementById('vizinput').value = '';
+  });
+})();
+
+// ---- Quiz ----
+(() => {
+  const questions = [
+    { q: "Why can't gets() be used safely?", opts: ["It's slow", "It takes no length argument", "It only works on Linux", "It requires root"], correct: 1 },
+    { q: "What does AddressSanitizer place around allocations?", opts: ["Encryption keys", "Poisoned redzones", "Backup copies", "Checksums"], correct: 1 },
+    { q: "A stack canary detects corruption of what?", opts: ["The heap", "Global variables", "The return address region", "File descriptors"], correct: 2 },
+    { q: "What's the actual bug in the memcpy() level?", opts: ["memcpy() is broken", "An unvalidated, caller-controlled length", "Wrong function name", "Missing semicolon"], correct: 1 },
+    { q: "What does ASLR randomize?", opts: ["Variable names", "Memory layout per run", "CPU clock speed", "File permissions"], correct: 1 },
+    { q: "Why is the array-indexing bug different from the others?", opts: ["It only affects floats", "No bound exists on the index itself, not a string length", "It can't be detected by ASan", "It only happens on Windows"], correct: 1 },
+  ];
+
+  const wrap = document.getElementById('quizwrap');
+  let score = 0, answered = 0;
+
+  questions.forEach((item, qi) => {
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    const p = document.createElement('p');
+    p.className = 'qtext';
+    p.textContent = `${qi + 1}. ${item.q}`;
+    card.appendChild(p);
+
+    item.opts.forEach((opt, oi) => {
+      const btn = document.createElement('button');
+      btn.className = 'qopt';
+      btn.textContent = opt;
+      btn.addEventListener('click', () => {
+        if (btn.dataset.locked) return;
+        card.querySelectorAll('.qopt').forEach(b => b.dataset.locked = '1');
+        if (oi === item.correct) {
+          btn.classList.add('correct');
+          score++;
+        } else {
+          btn.classList.add('wrong');
+          card.children[item.correct + 1].classList.add('correct');
+        }
+        answered++;
+        if (answered === questions.length) {
+          const s = document.createElement('p');
+          s.id = 'quizscore';
+          s.textContent = `Score: ${score} / ${questions.length}`;
+          wrap.appendChild(s);
+        }
+      });
+      card.appendChild(btn);
+    });
+    wrap.appendChild(card);
+  });
+})();
 </script>
 </body>
 </html>
