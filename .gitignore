@@ -12,3 +12,13 @@ scripts/.venv/
 scripts/__pycache__/
 .pytest_cache/
 *.pyc
+
+# Build artifacts — none of these should ever be tracked
+*.out
+*.o
+a.out
+core
+core.*
+*.core
+.gdb_history
+/tmp/payload

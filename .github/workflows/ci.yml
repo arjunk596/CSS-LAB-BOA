@@ -1,0 +1,28 @@
+name: Sandbox & Level Validation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sandbox image
+        run: docker compose build sandbox-image
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r scripts/requirements.txt pyyaml
+
+      - name: Run isolation tests
+        run: python -m pytest scripts/validate_sandbox.py -v
+
+      - name: Run per-level compile/run tests
+        run: python -m pytest scripts/test_all_levels.py -v
