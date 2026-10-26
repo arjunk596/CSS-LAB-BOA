@@ -1,7 +1,8 @@
 # CSS-LAB-BOA — Buffer Overflow Attack Virtual Lab
 
 An interactive, Docker-isolated educational lab demonstrating six classic
-stack-based buffer overflow vulnerabilities in C, with a live browser
+stack-based buffer overflow vulnerabilities in C, plus one bonus
+control-flow-hijack exercise,, with a live browser
 terminal into a disposable sandbox, a WebAssembly-backed stack
 visualizer, and a self-check quiz — built for a Cryptography & System
 Security course.

@@ -52,3 +52,24 @@ control-flow hijack technique.
 **Isn't:** a red-team exploit-development reference, a demonstration of
 exploitation against a realistic hardened target, or guidance applicable
 outside this specific, deliberately weakened sandbox.
+## The four mitigations this lab touches
+
+| Mitigation | Flag | What it actually stops |
+|---|---|---|
+| Stack canary | `-fstack-protector[-strong]` | Detects a corrupted return-address region before `ret` executes; aborts via `__stack_chk_fail` rather than jumping anywhere |
+| NX / DEP | `-Wl,-z,noexecstack` | Blocks direct execution of injected bytes on the stack — not a general fix, only blocks this one technique |
+| ASLR + PIE | `-fPIE -pie` | Randomizes code/data layout per run; a real exploit against this needs an information leak or ROP, not a fixed address |
+| Full RELRO | `-Wl,-z,relro,-z,now` | Makes the GOT read-only after startup, closing off GOT-overwrite as a redirection technique |
+
+## Local debugging artifact vs. portable exploit
+
+The bonus level (07) is built with all four of the above disabled,
+simultaneously, on one specific binary, on one specific machine. That is
+a **local GDB debugging artifact** — a single-binary, same-environment
+demonstration that control-flow hijacking is mechanically possible. It is
+**not** a portable exploit: a real target with any one of these
+mitigations re-enabled, a different compiler version, a different stack
+alignment, or ASLR active would require substantially more work
+(information disclosure, ROP chaining, or both) that this lab does not
+attempt to teach. Treat every offset and address this level produces as
+valid for exactly the build that produced it, and nothing else.

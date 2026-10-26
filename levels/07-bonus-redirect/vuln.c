@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Compiled in, but never called from main() directly. The exploit's goal
-   is to redirect execution here via a crafted overflow. */
-void secret_win(void) {
+/* noinline: keeps both functions as distinct, disassemblable symbols in
+   gdb rather than letting the compiler fold either into its caller. */
+__attribute__((noinline)) void secret_win(void) {
     printf("\n*** secret_win() reached -- control flow redirected ***\n\n");
 }
 
-void vulnerable_read(char *input) {
+__attribute__((noinline)) void vulnerable_read(char *input) {
     char buffer[16];
     strcpy(buffer, input); /* VULNERABLE, canary/PIE disabled at compile time */
     printf("Buffer: %s\n", buffer);

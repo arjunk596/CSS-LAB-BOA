@@ -6,9 +6,16 @@ void secure_copy(char *input, int len) {
     char buffer[16];
     int access_granted = 0;
 
+    if (len < 0) {
+        fprintf(stderr, "Rejected: length must be non-negative\n");
+        return;
+    }
+
     int safe_len = len;
-    if (safe_len > (int)sizeof(buffer) - 1) safe_len = sizeof(buffer) - 1;
-    memcpy(buffer, input, safe_len);
+    if ((size_t)safe_len > sizeof(buffer) - 1) {
+        safe_len = (int)(sizeof(buffer) - 1);
+    }
+    memcpy(buffer, input, (size_t)safe_len);
     buffer[safe_len] = '\0';
 
     printf("Buffer: %s\n", buffer);
