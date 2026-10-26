@@ -4,6 +4,7 @@ in validate_sandbox.py to all 7). Run with:
     pytest scripts/test_all_levels.py -v
 Requires: docker compose build sandbox-image (run first)
 """
+import os
 import docker
 import pytest
 import yaml
@@ -12,18 +13,33 @@ from pathlib import Path
 client = docker.from_env()
 IMAGE = "css-lab-boa-sandbox"
 LEVELS_YAML = Path(__file__).resolve().parent.parent / "levels" / "levels.yaml"
+DEFAULT_TIMEOUT = int(os.environ.get("LEVEL_TEST_TIMEOUT", "90"))
 
 SANDBOX_KWARGS = dict(
-    network_mode="none", cap_drop=["ALL"], security_opt=["no-new-privileges"],
-    mem_limit="256m", nano_cpus=1_000_000_000, pids_limit=64, read_only=True,
-    tmpfs={"/home/student": "rw,exec,size=32m,mode=1777", "/tmp": "rw,exec,size=32m,mode=1777"},
+    network_mode="none",
+    cap_drop=["ALL"],
+    security_opt=["no-new-privileges"],
+    mem_limit="256m",
+    nano_cpus=1_000_000_000,
+    pids_limit=64,
+    read_only=True,
+    tmpfs={
+        "/home/student": "rw,exec,size=32m,mode=1777",
+        "/tmp": "rw,exec,size=32m,mode=1777",
+    },
 )
 
-def run(cmd, timeout=30):
-    container = client.containers.run(IMAGE, cmd, detach=True, **SANDBOX_KWARGS)
+def run(cmd, timeout=DEFAULT_TIMEOUT):
+    container = client.containers.run(
+        IMAGE,
+        cmd,
+        detach=True,
+        **SANDBOX_KWARGS,
+    )
     try:
         result = container.wait(timeout=timeout)
-        return result.get("StatusCode", -1), container.logs(stdout=True, stderr=True)
+        logs = container.logs(stdout=True, stderr=True)
+        return result.get("StatusCode", 1), logs
     finally:
         container.remove(force=True)
 

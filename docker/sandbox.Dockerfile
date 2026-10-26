@@ -1,7 +1,11 @@
 FROM gcc:13-bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     gdb \
+    gdb-multiarch \
+    gcc-multilib \
+    libc6-dev-i386 \
+    binutils-multiarch \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash student
