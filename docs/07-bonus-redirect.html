@@ -12,6 +12,11 @@
   --serif:"Iowan Old Style","Georgia","Charter",serif;
   color-scheme:dark; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
+
+.docslink{font-family:var(--mono);font-size:.78rem;}
+.flagslot{margin-top:.6rem;padding:.6rem .8rem;border:1px solid var(--accent);border-radius:6px;font-family:var(--mono);font-size:.8rem;color:var(--accent);background:var(--bg-raised);}
+details.level.solved > summary .num{color:var(--accent);}
+
 @media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
   --bg:#f3f1ea;--bg-raised:#fff;--ink:#1c2420;--ink-dim:#566058;--rule:#d9d4c6;
   --accent:#1f7a46;--vuln:#a5342c;--secure:#1f7a46;--bonus:#8a6a1f; } }

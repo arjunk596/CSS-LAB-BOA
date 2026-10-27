@@ -103,12 +103,14 @@
   <section id="levels">
     <h2>the levels</h2>
 
-    <details class="level" open><summary><span class="num">01</span><b><span class="fn">gets()</span> — unbounded read</b></summary>
+    <details class="level" open data-level="01-gets"><summary><span class="num">01</span><b><span class="fn">gets()</span> — unbounded read</b></summary>
       <div class="body"><p>No length argument exists for it to respect — removed from the C standard for exactly this reason.</p>
         <div class="snippet">cd 01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
 echo "Bhushan" | /tmp/v
 python3 -c "print('A'*40)" | /tmp/v</div>
-        <p>Fix: <code class="fn safe">fgets(buffer, sizeof(buffer), stdin)</code>.</p></div>
+        <p>Fix: <code class="fn safe">fgets(buffer, sizeof(buffer), stdin)</code>.</p>
+        <p><a class="docslink" href="/docs/01-gets.html" target="_blank" rel="noopener">Full technical write-up →</a></p>
+      <div class="flagslot" hidden></div></div>
     </details>
 
     <details class="level"><summary><span class="num">02</span><b><span class="fn">strcpy()</span> — unchecked copy</b></summary>
@@ -208,14 +210,39 @@ python3 -c "print('A'*40)" | /tmp/v</div>
 
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/session');
   ws.binaryType = 'arraybuffer';
-  ws.onopen = () => {
-    dot.className = 'live'; statustext.textContent = 'connected';
-    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  function showFlag(levelId, flag) {
+  const d = document.querySelector(`details.level[data-level="${levelId}"]`);
+  if (!d) return;
+  d.classList.add('solved');
+  const slot = d.querySelector('.flagslot');
+  if (slot) { slot.hidden = false; slot.textContent = `Flag captured: ${flag}`; }
+}
+
+document.querySelectorAll('details.level').forEach((d) => {
+  d.addEventListener('toggle', () => {
+    if (d.open) ws.send(JSON.stringify({ type: 'setLevel', levelId: d.dataset.level }));
+  });
+});
+
+ws.onopen = () => {
+  dot.className = 'live'; statustext.textContent = 'connected';
+  ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  const openLevel = document.querySelector('details.level[open]');
+  if (openLevel) ws.send(JSON.stringify({ type: 'setLevel', levelId: openLevel.dataset.level }));
   };
   ws.onerror = () => { dot.className = 'dead'; statustext.textContent = 'connection error'; };
   ws.onclose = () => { dot.className = 'dead'; statustext.textContent = 'disconnected'; term.writeln('\r\n[session closed]'); };
-  ws.onmessage = (ev) => term.write(new Uint8Array(ev.data));
-  term.onData((data) => ws.send(data));
+  ws.onmessage = (ev) => {
+  if (typeof ev.data === 'string') {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'flag') showFlag(msg.levelId, msg.flag);
+    } catch (_) {}
+    return;
+  }
+  term.write(new Uint8Array(ev.data));
+};
+term.onData((data) => ws.send(data));
 </script>
 
 <script>

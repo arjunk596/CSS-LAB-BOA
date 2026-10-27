@@ -103,3 +103,24 @@ async function shutdown(signal) {
 }
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+app.use("/docs", express.static(path.join(__dirname, "../../docs")));
+
+
+import crypto from "crypto";
+import { makeFlagMinter } from "./flagEngine.js";
+
+// inside wss.on("connection", async (ws) => { ... }) :
+const sessionId = crypto.randomUUID();
+const flagMinter = makeFlagMinter();
+let currentLevelId = null;
+
+// in stream.on("data", ...):
+stream.on("data", (chunk) => {
+  if (ws.readyState === ws.OPEN) ws.send(chunk);
+  const win = flagMinter.feed(chunk, sessionId, currentLevelId);
+  if (win) ws.send(JSON.stringify({ type: "flag", ...win }));
+});
+
+// in ws.on("message", ...), alongside the existing resize branch:
+if (msg.type === "setLevel") { currentLevelId = msg.levelId; return; }
