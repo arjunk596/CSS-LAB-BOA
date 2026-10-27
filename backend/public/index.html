@@ -1,364 +1,651 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CSS-LAB-BOA — Buffer Overflow Lab</title>
-<link rel="stylesheet" href="/vendor/xterm.css">
-<style>
-  :root{
-    --bg:#0e1410;--bg-raised:#141c17;--ink:#e8efe9;--ink-dim:#9fb3a6;--rule:#28352d;
-    --accent:#7fe0a0;--vuln:#e07a7a;--secure:#7fe0a0;
-    --mono:"SFMono-Regular","JetBrains Mono",Consolas,Menlo,monospace;
-    --serif:"Iowan Old Style","Georgia","Charter",serif;
-    color-scheme:dark; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.55;}
-  nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:rgba(14,20,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);overflow-x:auto;}
-  .navrow{display:flex;gap:1.2rem;padding:.8rem 1.2rem;font-family:var(--mono);font-size:.76rem;white-space:nowrap;}
-  .navrow a{color:var(--ink-dim);text-decoration:none;} .navrow a:hover{color:var(--accent);}
-  .wrap{max-width:780px;margin:0 auto;padding:3rem 1.4rem 5rem;}
-  h1{font-size:clamp(1.7rem,5vw,2.3rem);margin:0 0 .8rem;font-weight:600;letter-spacing:-.01em;max-width:22ch;}
-  .kicker{font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);margin:0 0 .7rem;}
-  .tagline{color:var(--ink-dim);max-width:52ch;margin:0;}
-  section{margin:3rem 0;scroll-margin-top:3.4rem;}
-  h2{font-family:var(--mono);font-size:.82rem;color:var(--accent);margin:0 0 1rem;font-weight:600;}
-  p{max-width:68ch;} .lede{color:var(--ink-dim);}
-  .fn{color:var(--vuln);font-family:var(--mono);font-size:.95em;} .fn.safe{color:var(--secure);}
-
-  #termwrap{background:#000;border:1px solid var(--rule);border-radius:8px;overflow:hidden;}
-  #termbar{display:flex;justify-content:space-between;align-items:center;padding:.5rem .8rem;background:var(--bg-raised);border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--ink-dim);}
-  #status{display:flex;align-items:center;gap:.4rem;}
-  #dot{width:7px;height:7px;border-radius:50%;background:#d9b15a;}
-  #dot.live{background:var(--secure);} #dot.dead{background:var(--vuln);}
-  #term{height:380px;padding:.5rem;}
-
-  details.level{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;margin-bottom:.7rem;}
-  details.level summary{list-style:none;cursor:pointer;padding:.9rem 1.1rem;display:flex;gap:.7rem;align-items:baseline;}
-  details.level summary::-webkit-details-marker{display:none;}
-  .num{font-family:var(--mono);font-size:.72rem;color:var(--ink-dim);}
-  .level .body{padding:0 1.1rem 1rem;border-top:1px solid var(--rule);padding-top:.8rem;font-size:.92rem;}
-  .snippet{background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:.6rem .8rem;font-family:var(--mono);font-size:.76rem;overflow-x:auto;margin:.5rem 0;}
-
-  .faq{border-bottom:1px solid var(--rule);padding:.9rem 0;}
-  .faq summary{cursor:pointer;list-style:none;font-weight:600;font-size:.94rem;}
-  .faq summary::-webkit-details-marker{display:none;}
-  .faq p{margin:.6rem 0 0;color:var(--ink-dim);font-size:.9rem;}
-
-  .links{display:grid;gap:.5rem;}
-  .links a{display:block;padding:.7rem .85rem;background:var(--bg-raised);border:1px solid var(--rule);border-radius:6px;color:var(--ink);text-decoration:none;font-size:.9rem;}
-  footer{margin-top:3.5rem;padding-top:1.3rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
-  a{color:var(--accent);}
-
-  #vizwrap{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem;}
-  #vizbar{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:.74rem;color:var(--ink-dim);margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;}
-  .legend{display:flex;gap:.9rem;align-items:center;}
-  .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.3rem;vertical-align:middle;}
-  .sw.buf{background:#5aa7e0;} .sw.adj{background:var(--vuln);} .sw.rest{background:#2a332d;}
-  #vizgrid{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin-bottom:1rem;}
-  .cell{aspect-ratio:1;border-radius:3px;background:#1b241e;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.6rem;color:var(--ink-dim);transition:background .15s,transform .15s;}
-  .cell.buf{background:#1d3a52;} .cell.adj{background:#4a2020;}
-  .cell.hit{transform:scale(1.15);}
-  .cell.overflow{background:var(--vuln);color:#1a0a0a;font-weight:700;}
-  #vizcontrols{display:flex;gap:.5rem;flex-wrap:wrap;}
-  #vizinput{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:.5rem .7rem;color:var(--ink);font-family:var(--mono);font-size:.85rem;}
-  #vizcontrols button{background:var(--accent);color:#0a1410;border:none;border-radius:6px;padding:.5rem 1rem;font-family:var(--mono);font-size:.8rem;font-weight:700;cursor:pointer;}
-  #vizcontrols button#vizreset{background:transparent;color:var(--ink-dim);border:1px solid var(--rule);}
-
-  .qcard{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.1rem;margin-bottom:.8rem;}
-  .qcard p.qtext{font-weight:600;margin:0 0 .7rem;font-size:.95rem;}
-  .qopt{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:.55rem .8rem;margin-bottom:.4rem;color:var(--ink);font-size:.88rem;cursor:pointer;font-family:var(--serif);}
-  .qopt:hover{border-color:var(--accent);}
-  .qopt.correct{border-color:var(--secure);background:#132a1c;}
-  .qopt.wrong{border-color:var(--vuln);background:#2a1414;}
-  #quizscore{font-family:var(--mono);font-size:.9rem;color:var(--accent);margin-top:1rem;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buffer Overflow Attack | Computer Science & System Security Lab</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/vendor/xterm.css">
+    <script src="/vendor/xterm.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
 
-<nav><div class="navrow">
-  <a href="#run">Run a level</a><a href="#theory">Theory</a><a href="#levels">Levels</a><a href="#faq">FAQ</a><a href="#visualizer">Visualizer</a><a href="#quiz">Quiz</a><a href="#links">Links</a>
-</div></nav>
-
-<div class="wrap">
-  <p class="kicker">CSS-LAB-BOA <span style="opacity:.6">/ buffer overflow lab</span></p>
-  <h1>Break it, read why, see the fix.</h1>
-  <p class="tagline">A live, isolated sandbox for six classic C memory-safety bugs. Pick a level below, type the commands into the terminal, watch it fail — then compare it against the fixed version.</p>
-
-  <section id="run">
-    <h2>live terminal</h2>
-    <div id="termwrap">
-      <div id="termbar"><span id="status"><span id="dot"></span><span id="statustext">connecting…</span></span><span>bash · /opt/levels</span></div>
-      <div id="term"></div>
+<!-- Top Navigation Bar -->
+<header class="topbar">
+    <button class="back-button" id="backButton" aria-label="Back">←</button>
+    <div class="brand">
+        <h1>CSS Lab</h1>
+        <p>• Virtual System Security Lab • Buffer Overflow Attack Simulation</p>
     </div>
-    <p class="lede" style="font-size:.85rem;margin-top:.6rem;">Each page load starts a fresh, disposable sandbox session. Closing the tab ends it — nothing persists.</p>
-  </section>
-
-  <section id="theory">
-    <h2>the idea in one minute</h2>
-    <p class="lede">A buffer is a fixed-size chunk of memory. C does not stop you writing past its end — the extra bytes spill into whatever sits next in memory, including, on the stack, the address execution returns to when the function ends. Every level below is the same shape: an unsafe call, an input that proves it, a safe rewrite beside it.</p>
-  </section>
-
-  <section id="levels">
-    <h2>the levels</h2>
-
-    <details class="level" open data-level="01-gets"><summary><span class="num">01</span><b><span class="fn">gets()</span> — unbounded read</b></summary>
-      <div class="body"><p>No length argument exists for it to respect — removed from the C standard for exactly this reason.</p>
-        <div class="snippet">cd 01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
-echo "Bhushan" | /tmp/v
-python3 -c "print('A'*40)" | /tmp/v</div>
-        <p>Fix: <code class="fn safe">fgets(buffer, sizeof(buffer), stdin)</code>.</p>
-        <p><a class="docslink" href="/docs/01-gets.html" target="_blank" rel="noopener">Full technical write-up →</a></p>
-      <div class="flagslot" hidden></div></div>
-    </details>
-
-    <details class="level"><summary><span class="num">02</span><b><span class="fn">strcpy()</span> — unchecked copy</b></summary>
-      <div class="body"><p>Copies until a null byte, blind to the destination's size.</p>
-        <div class="snippet">cd 02-strcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
-/tmp/v "Bhushan"
-/tmp/v "$(python3 -c "print('A'*40)")"</div>
-        <p>Fix: <code class="fn safe">strncpy(dest, src, sizeof(dest)-1)</code>.</p></div>
-    </details>
-
-    <details class="level"><summary><span class="num">03</span><b><span class="fn">strcat()</span> — unchecked concatenation</b></summary>
-      <div class="body"><p>Appends with no sense of remaining capacity.</p>
-        <div class="snippet">cd 03-strcat && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
-/tmp/v "$(python3 -c "print('A'*40)")"</div>
-        <p>Fix: <code class="fn safe">strncat(dest, src, remaining)</code>.</p></div>
-    </details>
-
-    <details class="level"><summary><span class="num">04</span><b><span class="fn">sprintf()</span> — oversized output</b></summary>
-      <div class="body"><p>No limit on the formatted result's length.</p>
-        <div class="snippet">cd 04-sprintf && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
-/tmp/v "$(python3 -c "print('A'*40)")"</div>
-        <p>Fix: <code class="fn safe">snprintf(buf, sizeof(buf), …)</code>.</p></div>
-    </details>
-
-    <details class="level"><summary><span class="num">05</span><b><span class="fn">memcpy()</span> — incorrect byte count</b></summary>
-      <div class="body"><p>Copies exactly as told — correctly. The bug is trusting an unvalidated length.</p>
-        <div class="snippet">cd 05-memcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
-/tmp/v "$(python3 -c "print('A'*40)")"</div>
-        <p>Win condition: craft an input that flips the adjacent <code>access_granted</code> variable. Fix: clamp the length to <code>sizeof(buffer)-1</code>.</p></div>
-    </details>
-
-    <details class="level"><summary><span class="num">06</span><b>array indexing — invalid index</b></summary>
-      <div class="body"><p>No bound on the index itself, positive or negative.</p>
-        <div class="snippet">cd 06-array-indexing && gcc -g -fsanitize=address -o /tmp/v vuln.c
-/tmp/v 15 1      # out of bounds
-/tmp/v -5 1      # negative index</div>
-        <p>Fix: validate <code>0 ≤ idx &lt; 10</code> before every access.</p></div>
-    </details>
-
-    <details class="level"><summary><span class="num">07</span><b>return-address overwrite <span style="color:#d9b15a;font-family:var(--mono);font-size:.7rem;border:1px solid #d9b15a44;padding:.1rem .4rem;border-radius:4px;">bonus</span></b></summary>
-      <div class="body"><p>The deepest level: overwrite the saved return address to redirect execution into a function never called by the program. Canaries, PIE and ASLR are deliberately off here — the one place in this lab those protections are disabled. See <code>docs/solution.md</code> for the full gdb walkthrough.</p></div>
-    </details>
-  </section>
-
-
-  <section id="visualizer">
-    <h2>stack visualizer</h2>
-    <p class="lede">A real WebAssembly module backs this — not a JS simulation. <code>write_byte</code> is an unchecked store with no bounds check, exactly like the C functions above. Type a payload and watch it march across a simulated 16-byte buffer into the 8 bytes right after it.</p>
-    <div id="vizwrap">
-      <div id="vizbar">
-        <span id="vizstatus">loading wasm…</span>
-        <span class="legend"><span class="sw buf"></span>buffer[16]<span class="sw adj"></span>adjacent[8]<span class="sw rest"></span>unused</span>
-      </div>
-      <div id="vizgrid"></div>
-      <div id="vizcontrols">
-        <input id="vizinput" type="text" placeholder="type a payload, e.g. AAAAAAAAAAAAAAAABBBB" maxlength="40">
-        <button id="vizwrite">Write</button>
-        <button id="vizreset">Reset</button>
-      </div>
-      <p id="vizmsg" class="lede" style="font-size:.85rem;"></p>
+    <div class="topbar-actions">
+        <button class="tour-header-button" id="startTourButton" aria-label="Take Guided Tour">Take Tour</button>
+        <button class="share-button" id="shareButton">↗ Share</button>
     </div>
-  </section>
+</header>
 
-  <section id="quiz">
-    <h2>quick check</h2>
-    <p class="lede">Six questions, drawn from the viva material. Scored instantly, nothing sent anywhere.</p>
-    <div id="quizwrap"></div>
-  </section>
+<!-- Main Laboratory Workspace -->
+<main class="workspace">
+    <!-- Left Section: Experiment Manual & Active Lesson -->
+    <section class="viewer">
+        <div class="toolbar">
+            <button id="menuButton" class="tool-button" aria-label="Toggle contents">☰</button>
+            <span class="viewer-label">Experiment Manual</span>
+            <div class="toolbar-actions">
+                <button id="prevButton" class="circle-button" aria-label="Previous resource">‹</button>
+                <span id="pageNumber">1 / 7</span>
+                <button id="nextButton" class="circle-button next" aria-label="Next resource">›</button>
+            </div>
+        </div>
 
-  <section id="faq">
-    <h2>faq</h2>
-    <details class="faq"><summary>Is this actually safe to run?</summary><p>Yes — each session is a disposable, network-isolated Docker container with a read-only filesystem outside a small scratch area and hard resource limits. Never run these binaries outside the sandbox.</p></details>
-    <details class="faq"><summary>What is AddressSanitizer?</summary><p>A compiler instrumentation that surrounds allocations with poisoned "redzones," catching out-of-bounds access the instant it happens, with the exact address and stack trace.</p></details>
-    <details class="faq"><summary>I got "Read-only file system" compiling.</summary><p>Compile into <code>/tmp</code>, the writable scratch area, not the level directory itself.</p></details>
-    <details class="faq"><summary>What's different between vuln.c and secure.c?</summary><p>Only the one function under study, swapped for its bounds-aware counterpart. Same input, different outcome.</p></details>
-  </section>
+        <div class="lesson-content" id="lessonContent">
+            
+            <!-- LESSON 1: AIM & OBJECTIVES -->
+            <article class="lesson active" id="aim" data-title="Aim & Objectives">
+                <p class="section-label">EXPERIMENT 04 — SYSTEM SECURITY</p>
+                <h2>Aim and Objectives</h2>
 
-  <section id="links">
-    <h2>references</h2>
-    <div class="links">
-      <a href="https://github.com/beeth73/CSS-LAB-BOA">Project repository</a>
-      <a href="https://cwe.mitre.org/data/definitions/120.html">CWE-120 — Buffer Copy without Checking Size of Input</a>
-      <a href="https://clang.llvm.org/docs/AddressSanitizer.html">AddressSanitizer documentation</a>
-      <a href="https://owasp.org/www-community/vulnerabilities/Buffer_Overflow">OWASP — Buffer Overflow</a>
+                <p>
+                    <strong>Aim:</strong> To understand and demonstrate memory corruption vulnerabilities in low-level compiled languages, specifically analyzing how unbounded user input can overwrite adjacent stack memory in a <strong>Stack-Based Buffer Overflow Attack (Smashing the Stack)</strong>, hijack the CPU instruction pointer (<code>EIP</code>/<code>RIP</code>), and redirect execution flow to attacker-controlled code or arbitrary functions.
+                </p>
+
+                <h3>Learning Objectives</h3>
+                <ol>
+                    <li>
+                        <strong>Process Memory Architecture:</strong> Understand the layout of a binary in virtual memory, including Text/Code, Data, BSS, Heap, and Stack segments.
+                    </li>
+                    <li>
+                        <strong>Stack Frame Dynamics:</strong> Analyze function call mechanics, stack pointer (<code>ESP</code>/<code>RSP</code>), frame base pointer (<code>EBP</code>/<code>RBP</code>), and how function return addresses are placed on the call stack.
+                    </li>
+                    <li>
+                        <strong>Vulnerable C Functions:</strong> Identify classical unchecked memory functions (<code>gets</code>, <code>strcpy</code>, <code>strcat</code>, <code>sprintf</code>, <code>memcpy</code>, and unvalidated array indexing) that fail to enforce buffer bounds.
+                    </li>
+                    <li>
+                        <strong>Control Flow Hijacking:</strong> Formulate crafted string inputs that overwrite adjacent flags, alter program logic, and manipulate the saved return address.
+                    </li>
+                    <li>
+                        <strong>Modern Mitigations & Hardening:</strong> Evaluate defensive technologies including Stack Canaries (<code>-fstack-protector</code>), Non-Executable Stack (<code>DEP/NX</code>), Address Space Layout Randomization (<code>ASLR</code>), and AddressSanitizer (<code>ASan</code>).
+                    </li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>Educational Sandboxing:</strong>
+                    This virtual laboratory runs isolated within disposable Docker containers on Ubuntu with AddressSanitizer support. Compiler protections are deliberately isolated so students can examine both vulnerable and hardened implementations safely.
+                </div>
+
+                <h3>Expected Outcomes</h3>
+                <ul>
+                    <li>Understand the root cause of spatial memory violations in low-level languages.</li>
+                    <li>Observe memory corruption in real-time via the interactive WebAssembly memory visualizer.</li>
+                    <li>Successfully exploit and capture flags in the 7 hands-on vulnerability sandbox levels.</li>
+                    <li>Implement defensive coding practices utilizing bounded string functions (e.g., <code>fgets</code>, <code>strncpy</code>, <code>snprintf</code>).</li>
+                </ul>
+            </article>
+
+            <!-- LESSON 2: THEORY -->
+            <article class="lesson" id="theory" data-title="Theory — Stack Architecture">
+                <p class="section-label">EXPERIMENT 04 — THEORY</p>
+                <h2>Theory: Memory Layout & Stack Smashing</h2>
+
+                <p>
+                    A buffer is a contiguous block of physical or virtual memory allocated to hold data such as character strings or arrays. Because C and C++ do not provide automatic array bounds checking, writing beyond the allocated capacity causes data to overwrite adjacent memory allocations.
+                </p>
+
+                <h3>1. Virtual Memory Organization</h3>
+                <p>
+                    When an ELF or Mach-O executable runs, its virtual address space is organized into distinct segments:
+                </p>
+                <div class="data-table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Segment</th>
+                                <th>Address Range</th>
+                                <th>Purpose & Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Stack</strong></td>
+                                <td>High Memory (grows downwards)</td>
+                                <td>Stores local function variables, call frames, saved registers, and return addresses.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Heap</strong></td>
+                                <td>Low Memory (grows upwards)</td>
+                                <td>Dynamic memory allocations managed at runtime via <code>malloc()</code> and <code>free()</code>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>BSS & Data</strong></td>
+                                <td>Low Memory</td>
+                                <td>Uninitialized (BSS) and initialized global and static variables.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Text (Code)</strong></td>
+                                <td>Lowest Memory (Read-Only)</td>
+                                <td>Compiled CPU machine instructions of the program.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>2. Anatomy of a Call Stack Frame</h3>
+                <p>
+                    Each time a function is called, a new stack frame is pushed onto the stack. A typical x86/x64 stack frame contains:
+                </p>
+                <div class="formula">
+                    <code>[Function Arguments] &rarr; [Return Address (RET)] &rarr; [Saved Frame Pointer (EBP)] &rarr; [Local Buffer Variables]</code>
+                </div>
+                <p>
+                    <strong>The Critical Vulnerability:</strong> While the call stack grows <em>downward</em> (from higher to lower memory addresses), character buffers write <em>upward</em> (from lower to higher memory addresses). Therefore, when user input overflows a local buffer, it directly spills into the Saved Frame Pointer and the <strong>Return Address</strong>!
+                </p>
+
+                <div class="alert-box vuln">
+                    <strong>The Exploitation Vector:</strong> If an attacker provides an input payload longer than the buffer, the excess bytes overwrite the return address. When the function executes the <code>RET</code> instruction, the CPU pops the attacker-supplied address into the Instruction Pointer (<code>EIP</code>/<code>RIP</code>), redirecting program execution.
+                </div>
+
+                <h3>3. Vulnerable Functions vs. Secure Counterparts</h3>
+                <div class="data-table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Vulnerable C API</th>
+                                <th>Defect Mechanism</th>
+                                <th>Secure Modern Replacement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>gets(buffer)</code></td>
+                                <td>Reads until newline with no bounds check. Removed from ISO C11.</td>
+                                <td><code>fgets(buffer, sizeof(buffer), stdin)</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>strcpy(dst, src)</code></td>
+                                <td>Copies until null byte (<code>\0</code>), ignoring destination size.</td>
+                                <td><code>strncpy(dst, src, sizeof(dst) - 1)</code> or <code>strlcpy</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>strcat(dst, src)</code></td>
+                                <td>Appends without verifying available destination room.</td>
+                                <td><code>strncat(dst, src, sizeof(dst) - strlen(dst) - 1)</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>sprintf(buf, fmt, ...)</code></td>
+                                <td>Formats string without maximum length restraint.</td>
+                                <td><code>snprintf(buf, sizeof(buf), fmt, ...)</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>memcpy(dst, src, len)</code></td>
+                                <td>Fails when caller controls <code>len</code> or signed integer overflow occurs.</td>
+                                <td>Explicit bounds validation: <code>if (len &le; sizeof(dst))</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>4. Modern Compiler & Operating System Defenses</h3>
+                <ul>
+                    <li><strong>Stack Canaries (StackGuard):</strong> A random canary word placed between local buffers and the saved frame pointer. Before returning, the function verifies the canary is intact; if altered, <code>__stack_chk_fail()</code> terminates the process.</li>
+                    <li><strong>DEP / NX (Non-Executable Stack):</strong> CPU hardware page table protection marking stack pages as non-executable (No-Execute bit), preventing execution of injected shellcode.</li>
+                    <li><strong>ASLR (Address Space Layout Randomization):</strong> Randomizes the base addresses of stack, heap, and shared libraries on each program invocation, making hardcoded exploit addresses ineffective.</li>
+                </ul>
+            </article>
+
+            <!-- LESSON 3: PROCEDURE -->
+            <article class="lesson" id="procedure" data-title="Procedure — Laboratory Guide">
+                <p class="section-label">EXPERIMENT 04 — PROCEDURE</p>
+                <h2>Procedure: Sandbox & Exploitation Guide</h2>
+
+                <p>
+                    Follow this experimental procedure to explore each vulnerability class inside the live Docker sandbox.
+                </p>
+
+                <h3>Step 1 — Understand Stack Overflow via the Visualizer</h3>
+                <ol>
+                    <li>Navigate to the <strong>Interactive Simulation</strong> tab.</li>
+                    <li>Use the <strong>WASM Stack Visualizer</strong> to test inputs of lengths 8, 16, 20, and 24 bytes.</li>
+                    <li>Observe how the memory cells highlight in blue for safe buffer storage, and turn red when spilling into the adjacent stack canary and frame pointer regions.</li>
+                </ol>
+
+                <h3>Step 2 — Connect to the Disposable Sandbox Shell</h3>
+                <ol>
+                    <li>Verify the status indicator displays <span class="badge-chip active">● connected</span> in the live terminal pane.</li>
+                    <li>Inspect the current directory:
+                        <div class="code-snippet">
+                            <code>ls -la /opt/levels</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('ls -la /opt/levels')">Copy</button>
+                        </div>
+                    </li>
+                </ol>
+
+                <h3>Step 3 — Level 01: Unbounded Read with gets()</h3>
+                <ol>
+                    <li>Navigate into the <code>01-gets</code> directory and compile the vulnerable source code:
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c')">Copy</button>
+                        </div>
+                    </li>
+                    <li>Run the program with a legitimate small input (under 16 bytes):
+                        <div class="code-snippet">
+                            <code>echo "CyberLab" | /tmp/v</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('echo &quot;CyberLab&quot; | /tmp/v')">Copy</button>
+                        </div>
+                    </li>
+                    <li>Trigger the overflow using an oversized payload:
+                        <div class="code-snippet">
+                            <code>python3 -c "print('A'*40)" | /tmp/v</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('python3 -c &quot;print(\'A\'*40)&quot; | /tmp/v')">Copy</button>
+                        </div>
+                    </li>
+                    <li>Notice how <strong>AddressSanitizer</strong> immediately intercepts the stack-buffer-overflow and emits a detailed memory crash report.</li>
+                </ol>
+
+                <h3>Step 4 — Progress Through Remaining Levels</h3>
+                <p>
+                    Proceed through Levels 02 (<code>strcpy</code>), 03 (<code>strcat</code>), 04 (<code>sprintf</code>), 05 (<code>memcpy</code>), 06 (array indexing), and 07 (bonus return address redirect). Compare each vulnerable implementation with its corresponding safe rewrite!
+                </p>
+            </article>
+
+            <!-- LESSON 4: INTERACTIVE SIMULATION & TERMINAL -->
+            <article class="lesson" id="simulation" data-title="Interactive Simulation & Sandbox">
+                <p class="section-label">EXPERIMENT 04 — INTERACTIVE ENVIRONMENT</p>
+                <h2>Interactive Stack Visualizer & Live Sandbox</h2>
+
+                <p>
+                    This workbench combines a real-time <strong>WebAssembly linear memory visualizer</strong> with an active, isolated <strong>Docker sandbox terminal</strong>.
+                </p>
+
+                <!-- Part 1: WASM Stack Memory Visualizer -->
+                <div class="sim-card">
+                    <div class="sim-card-header">
+                        <div>
+                            <h3>Real WebAssembly Stack Memory Visualizer</h3>
+                            <small class="muted">Live compiled WebAssembly module demonstrating byte-by-byte stack overflow</small>
+                        </div>
+                        <span class="badge-chip" id="vizStatusBadge">● WASM Engine Ready</span>
+                    </div>
+
+                    <div class="viz-legend">
+                        <div class="viz-legend-item">
+                            <span class="legend-square buf"></span>
+                            <span>Safe Buffer Region (Bytes 0–15)</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <span class="legend-square adj"></span>
+                            <span>Adjacent Stack / Return Pointer (Bytes 16–23)</span>
+                        </div>
+                        <div class="viz-legend-item">
+                            <span class="legend-square empty"></span>
+                            <span>Empty (Unwritten 0x00)</span>
+                        </div>
+                    </div>
+
+                    <div class="memory-grid-wrap">
+                        <div class="memory-grid" id="vizMemoryGrid">
+                            <!-- Populated with 24 memory cells -->
+                        </div>
+                    </div>
+
+                    <div class="viz-controls">
+                        <div class="viz-presets">
+                            <span style="font-size:12px; font-weight:600; align-self:center; margin-right:4px;">Presets:</span>
+                            <button type="button" class="viz-preset-btn" onclick="applyVizPreset('Normal')">Normal (8 Bytes)</button>
+                            <button type="button" class="viz-preset-btn" onclick="applyVizPreset('Boundary')">Boundary (16 Bytes)</button>
+                            <button type="button" class="viz-preset-btn" onclick="applyVizPreset('Overflow')">Overflow Attack (20 Bytes)</button>
+                            <button type="button" class="viz-preset-btn" onclick="applyVizPreset('Hijack')">Full Hijack (24 Bytes)</button>
+                        </div>
+
+                        <div class="viz-input-row">
+                            <input type="text" id="vizInput" class="viz-input" placeholder="Type or paste payload string..." value="Hello CyberLab">
+                            <button type="button" class="btn-primary" id="vizInjectBtn">Inject Payload</button>
+                            <button type="button" class="btn-secondary" id="vizResetBtn">Reset Memory</button>
+                        </div>
+
+                        <div class="viz-status-readout" id="vizReadout">
+                            Ready. Enter a string or click a preset to simulate memory copying.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Part 2: Live Docker Sandbox Terminal -->
+                <div class="terminal-card">
+                    <div class="terminal-header">
+                        <div class="term-status-indicator">
+                            <span class="status-dot" id="termStatusDot"></span>
+                            <span id="termStatusText">connecting to docker sandbox...</span>
+                            <span style="opacity:0.4;">|</span>
+                            <span>bash · /opt/levels</span>
+                        </div>
+                        <div class="terminal-actions">
+                            <button type="button" class="term-action-btn" id="termReconnectBtn" title="Restart Sandbox Session">Restart Session</button>
+                            <button type="button" class="term-action-btn" id="termClearBtn" title="Clear Screen">Clear</button>
+                        </div>
+                    </div>
+
+                    <div id="termContainer"></div>
+
+                    <div class="quick-commands-bar">
+                        <span>Quick Commands:</span>
+                        <button type="button" class="quick-cmd-chip" onclick="sendTerminalCommand('cd /opt/levels/01-gets &amp;&amp; ls -la')">cd 01-gets</button>
+                        <button type="button" class="quick-cmd-chip" onclick="sendTerminalCommand('cat vuln.c')">cat vuln.c</button>
+                        <button type="button" class="quick-cmd-chip" onclick="sendTerminalCommand('make')">make</button>
+                        <button type="button" class="quick-cmd-chip" onclick="sendTerminalCommand('cd /opt/levels/07-bonus-redirect &amp;&amp; ls -la')">cd 07-redirect</button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- LESSON 5: EXPLOIT LEVELS CATALOG -->
+            <article class="lesson" id="levels" data-title="Exploit Levels & Payloads">
+                <p class="section-label">EXPERIMENT 04 — HANDS-ON CATALOG</p>
+                <h2>Exploit Levels & Vulnerability Breakdown</h2>
+
+                <p>
+                    Each level isolates a specific memory corruption vulnerability pattern. Click each level to examine the vulnerable C call, review the trigger commands, copy the exploit string, and inspect the safe fix.
+                </p>
+
+                <!-- Level 01 -->
+                <div class="level-card open" data-level="01-gets">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">01</span>
+                            <span class="level-name">Unbounded Input with gets()</span>
+                            <span class="level-func-tag">gets()</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> <code>gets()</code> reads characters from standard input until it encounters a newline, without respecting destination buffer capacity.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+echo "NormalInput" | /tmp/v
+python3 -c "print('A'*40)" | /tmp/v</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/01-gets && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\npython3 -c &quot;print(\'A\'*40)&quot; | /tmp/v')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> <code>fgets(buffer, sizeof(buffer), stdin)</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 02 -->
+                <div class="level-card" data-level="02-strcpy">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">02</span>
+                            <span class="level-name">Unchecked Copy with strcpy()</span>
+                            <span class="level-func-tag">strcpy()</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> <code>strcpy()</code> copies bytes until finding a null terminator, ignoring destination bounds.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/02-strcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+/tmp/v "ValidArg"
+/tmp/v "$(python3 -c "print('A'*40)")"</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/02-strcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\n/tmp/v &quot;$(python3 -c &quot;print(\'A\'*40)&quot;)&quot;')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> <code>strncpy(buffer, src, sizeof(buffer) - 1); buffer[sizeof(buffer)-1] = '\0';</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 03 -->
+                <div class="level-card" data-level="03-strcat">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">03</span>
+                            <span class="level-name">Unbounded Concatenation with strcat()</span>
+                            <span class="level-func-tag">strcat()</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> <code>strcat()</code> appends source string bytes onto destination without checking whether remaining space suffices.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/03-strcat && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+/tmp/v "FirstPart" "SecondPart"
+/tmp/v "$(python3 -c "print('A'*20)")" "$(python3 -c "print('B'*20)")"</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/03-strcat && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\n/tmp/v &quot;$(python3 -c &quot;print(\'A\'*20)&quot;)&quot; &quot;$(python3 -c &quot;print(\'B\'*20)&quot;)&quot;')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> <code>strncat(dest, src, sizeof(dest) - strlen(dest) - 1)</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 04 -->
+                <div class="level-card" data-level="04-sprintf">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">04</span>
+                            <span class="level-name">Formatted Printing with sprintf()</span>
+                            <span class="level-func-tag">sprintf()</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> <code>sprintf()</code> formats and writes data into a buffer without receiving maximum length bounds.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/04-sprintf && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+/tmp/v "Alice" 100
+/tmp/v "$(python3 -c "print('A'*40)")" 100</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/04-sprintf && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\n/tmp/v &quot;$(python3 -c &quot;print(\'A\'*40)&quot;)&quot; 100')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> <code>snprintf(dest, sizeof(dest), "User: %s (id: %d)", user, id)</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 05 -->
+                <div class="level-card" data-level="05-memcpy">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">05</span>
+                            <span class="level-name">Unvalidated Length with memcpy()</span>
+                            <span class="level-func-tag">memcpy()</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> The program copies <code>n</code> bytes directly into a buffer where <code>n</code> is caller-supplied or subject to integer overflow.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/05-memcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+/tmp/v 8 "12345678"
+/tmp/v 40 "$(python3 -c "print('A'*40)")"</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/05-memcpy && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\n/tmp/v 40 &quot;$(python3 -c &quot;print(\'A\'*40)&quot;)&quot;')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> Validate length strictly: <code>if (len &gt; sizeof(buf)) { return -1; }</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 06 -->
+                <div class="level-card" data-level="06-array-indexing">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">06</span>
+                            <span class="level-name">Missing Bounds Check on Array Index</span>
+                            <span class="level-func-tag">index []</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> Writing to an array via an unconstrained integer index allows arbitrary displacement overwrites outside the array boundary.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/06-array-indexing && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c
+/tmp/v 2 99
+/tmp/v 12 1337</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/06-array-indexing && gcc -g -fsanitize=address -fno-stack-protector -o /tmp/v vuln.c\n/tmp/v 12 1337')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> Explicit range validation: <code>if (idx &gt;= 0 &amp;&amp; idx &lt; MAX_ELEMENTS)</code></p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+
+                <!-- Level 07 -->
+                <div class="level-card" data-level="07-bonus-redirect">
+                    <button type="button" class="level-header" onclick="toggleLevelCard(this)">
+                        <div class="level-title-group">
+                            <span class="level-number-badge">07</span>
+                            <span class="level-name">Control-Flow Hijack: Return Address Redirection</span>
+                            <span class="level-func-tag">RET Hijack</span>
+                        </div>
+                        <span class="level-toggle-icon">▼</span>
+                    </button>
+                    <div class="level-body">
+                        <p><strong>Vulnerability:</strong> Overwrites the saved Return Address (<code>RET</code>) on the stack to redirect instruction execution to the secret target function <code>win()</code>.</p>
+                        <div class="code-snippet">
+                            <code>cd /opt/levels/07-bonus-redirect && make
+./exploit.sh</code>
+                            <button class="snippet-copy-btn" onclick="copySnippet('cd /opt/levels/07-bonus-redirect && make\n./exploit.sh')">Copy</button>
+                        </div>
+                        <p><strong>Safe Remediation:</strong> Enable compiler stack canaries: <code>gcc -fstack-protector-all</code> and shadow stacks.</p>
+                        <div class="flag-slot" hidden></div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- LESSON 6: ASSESSMENT / QUIZ -->
+            <article class="lesson" id="assessment" data-title="Assessment — Quiz">
+                <p class="section-label">EXPERIMENT 04 — KNOWLEDGE CHECK</p>
+                <h2>Self-Check Assessment</h2>
+
+                <p>
+                    Test your understanding of memory safety, stack layouts, and buffer overflow mitigations. Select the best answer for each question to see immediate feedback.
+                </p>
+
+                <div class="quiz-container" id="quizContainer">
+                    <!-- Questions injected dynamically via script.js -->
+                </div>
+
+                <div class="quiz-score-banner" id="quizScoreBanner" style="display:none;">
+                    <div>
+                        <strong style="font-size:16px;">Assessment Complete!</strong>
+                        <p id="quizScoreText" style="margin:4px 0 0; color:var(--brown-dark);"></p>
+                    </div>
+                    <button type="button" class="btn-primary" onclick="resetQuiz()">Retake Quiz</button>
+                </div>
+            </article>
+
+            <!-- LESSON 7: REFERENCES & FEEDBACK -->
+            <article class="lesson" id="feedback" data-title="FAQ & References">
+                <p class="section-label">EXPERIMENT 04 — DOCUMENTATION</p>
+                <h2>Frequently Asked Questions & References</h2>
+
+                <h3>Frequently Asked Questions</h3>
+                <div class="level-card open">
+                    <div class="level-header" style="cursor:default;">
+                        <strong>Why was gets() removed from modern C standards?</strong>
+                    </div>
+                    <div class="level-body">
+                        <p>Because <code>gets()</code> only accepts a pointer to the destination buffer with no size parameter, it is fundamentally impossible to use safely with untrusted input. It was deprecated in ISO C99 and formally removed in ISO C11.</p>
+                    </div>
+                </div>
+
+                <div class="level-card open">
+                    <div class="level-header" style="cursor:default;">
+                        <strong>How does AddressSanitizer (ASan) detect buffer overflows?</strong>
+                    </div>
+                    <div class="level-body">
+                        <p>AddressSanitizer surrounds all heap, global, and stack variables with "poisoned redzones" in shadow memory. Every load and store operation is instrumented at compile-time to check if the target memory is poisoned. Accessing a redzone immediately triggers an ASan crash report.</p>
+                    </div>
+                </div>
+
+                <div class="level-card open">
+                    <div class="level-header" style="cursor:default;">
+                        <strong>Does ASLR alone prevent buffer overflow exploitation?</strong>
+                    </div>
+                    <div class="level-body">
+                        <p>No. While ASLR randomizes base addresses, attackers can bypass it using memory leak vulnerabilities to discover addresses, or use relative displacements in partial overwrites. Robust defense requires defense-in-depth: bounds checking, canaries, DEP/NX, and ASLR combined.</p>
+                    </div>
+                </div>
+
+                <h3>Author & Course Information</h3>
+                <div class="info-box">
+                    <strong>Fr. Conceicao Rodrigues College of Engineering (CRCE)</strong><br>
+                    Department of Computer Engineering<br>
+                    Subject: Cryptography & System Security (CSS Virtual Lab)
+                </div>
+
+                <h3>Key Academic & Industry References</h3>
+                <ul>
+                    <li><a href="https://insecure.org/stf/smashstack.html" target="_blank" rel="noopener">Elias Levy (Aleph One) — "Smashing The Stack For Fun And Profit" (Phrack 49, 1996)</a></li>
+                    <li><a href="https://cwe.mitre.org/data/definitions/120.html" target="_blank" rel="noopener">CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')</a></li>
+                    <li><a href="https://cwe.mitre.org/data/definitions/121.html" target="_blank" rel="noopener">CWE-121: Stack-based Buffer Overflow</a></li>
+                    <li><a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noopener">LLVM Clang / GCC AddressSanitizer Documentation</a></li>
+                    <li><a href="https://owasp.org/www-community/vulnerabilities/Buffer_Overflow" target="_blank" rel="noopener">OWASP: Buffer Overflow Prevention Cheat Sheet</a></li>
+                </ul>
+            </article>
+
+        </div>
+    </section>
+
+    <!-- Right Section: Resources Navigation & Learning Path -->
+    <aside class="resources" id="resourcesPanel">
+        <div class="resource-tabs">
+            <button class="resource-tab active" data-tab="all">All</button>
+            <button class="resource-tab" data-tab="interactive">Interactive</button>
+            <button class="resource-tab" data-tab="manual">Manual</button>
+        </div>
+        <div class="resource-heading">Explanation Resources</div>
+        <div id="resourceList" class="resource-list"></div>
+
+        <!-- Learning Path Progress Checklist -->
+        <div class="learning-path-card" id="learningPathCard" aria-label="Learning Path Progress">
+            <div class="learning-path-head">
+                <span>Learning Path</span>
+                <span id="learningPathCount">0 / 7</span>
+            </div>
+            <div class="learning-progress-track" role="progressbar" aria-label="Learning progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="learningProgressBar">
+                <div class="learning-progress-fill" id="learningProgressFill"></div>
+            </div>
+            <ul class="learning-path-list" id="learningPathList">
+                <!-- Dynamically populated with checkmarks -->
+            </ul>
+        </div>
+
+        <p class="resource-note">Select a resource to view its interactive content.</p>
+    </aside>
+</main>
+
+<!-- Persistent Floating "?" Help Button -->
+<button class="floating-help-btn" id="floatingHelpBtn" aria-label="Replay guided lab tour" title="Take guided lab tour (re-opens anytime)">
+    <span class="help-icon" aria-hidden="true">?</span>
+    <span class="help-text">Tour</span>
+</button>
+
+<!-- Guided Onboarding Tour Spotlight & Dialog -->
+<div class="tour-overlay" id="tourOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourText">
+    <div class="tour-backdrop" id="tourBackdrop" aria-hidden="true"></div>
+    <div class="tour-spotlight" id="tourSpotlight" aria-hidden="true"></div>
+
+    <div class="tour-tooltip" id="tourTooltip" role="document">
+        <div class="tour-card-header">
+            <span class="tour-badge" id="tourBadge">Step 1 of 8</span>
+            <button class="tour-close-btn" id="tourCloseBtn" aria-label="Skip tour" title="Skip tour (Esc)">✕</button>
+        </div>
+        <div class="tour-card-body">
+            <h3 class="tour-title" id="tourTitle">Welcome to the Lab!</h3>
+            <p class="tour-text" id="tourText"></p>
+            <div class="tour-analogy-box" id="tourAnalogyBox" hidden>
+                <span class="tour-analogy-label">Analogy</span>
+                <span class="tour-analogy-text" id="tourAnalogyText"></span>
+            </div>
+        </div>
+        <div class="tour-card-footer">
+            <div class="tour-dots" id="tourDots" aria-label="Tour progress dots"></div>
+            <div class="tour-actions">
+                <button type="button" class="tour-btn" id="tourBackBtn">‹ Back</button>
+                <button type="button" class="tour-btn tour-btn-next" id="tourNextBtn">Next ›</button>
+            </div>
+        </div>
+        <div class="tour-card-meta">
+            <span>Guided Onboarding Tour</span>
+            <button type="button" class="tour-skip-btn" id="tourSkipBtn">Skip tour</button>
+        </div>
     </div>
-  </section>
-
-  <footer>MIT licensed · educational use only · Bhushan Ladgaonkar · TE Computer Engineering, Div A · FrCRCE</footer>
 </div>
 
-<script src="/vendor/xterm.js"></script>
-<script>
-  const term = new Terminal({ cursorBlink: true, fontSize: 13, theme: { background: "#000000" } });
-  term.open(document.getElementById('term'));
-  const dot = document.getElementById('dot');
-  const statustext = document.getElementById('statustext');
-
-  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/session');
-  ws.binaryType = 'arraybuffer';
-  function showFlag(levelId, flag) {
-  const d = document.querySelector(`details.level[data-level="${levelId}"]`);
-  if (!d) return;
-  d.classList.add('solved');
-  const slot = d.querySelector('.flagslot');
-  if (slot) { slot.hidden = false; slot.textContent = `Flag captured: ${flag}`; }
-}
-
-document.querySelectorAll('details.level').forEach((d) => {
-  d.addEventListener('toggle', () => {
-    if (d.open) ws.send(JSON.stringify({ type: 'setLevel', levelId: d.dataset.level }));
-  });
-});
-
-ws.onopen = () => {
-  dot.className = 'live'; statustext.textContent = 'connected';
-  ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-  const openLevel = document.querySelector('details.level[open]');
-  if (openLevel) ws.send(JSON.stringify({ type: 'setLevel', levelId: openLevel.dataset.level }));
-  };
-  ws.onerror = () => { dot.className = 'dead'; statustext.textContent = 'connection error'; };
-  ws.onclose = () => { dot.className = 'dead'; statustext.textContent = 'disconnected'; term.writeln('\r\n[session closed]'); };
-  ws.onmessage = (ev) => {
-  if (typeof ev.data === 'string') {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'flag') showFlag(msg.levelId, msg.flag);
-    } catch (_) {}
-    return;
-  }
-  term.write(new Uint8Array(ev.data));
-};
-term.onData((data) => ws.send(data));
-</script>
-
-<script>
-// ---- Stack visualizer, backed by a real compiled WASM module ----
-(async () => {
-  const statusEl = document.getElementById('vizstatus');
-  const gridEl = document.getElementById('vizgrid');
-  const msgEl = document.getElementById('vizmsg');
-  const BUF_SIZE = 16, ADJ_SIZE = 8, TOTAL = BUF_SIZE + ADJ_SIZE;
-
-  for (let i = 0; i < TOTAL; i++) {
-    const c = document.createElement('div');
-    c.className = 'cell ' + (i < BUF_SIZE ? 'buf' : 'adj');
-    c.id = 'cell' + i;
-    gridEl.appendChild(c);
-  }
-
-  let wasm;
-  try {
-    const resp = await fetch('/vendor/overflow.wasm');
-    const bytes = await resp.arrayBuffer();
-    const { instance } = await WebAssembly.instantiate(bytes);
-    wasm = instance.exports;
-    wasm.reset_region();
-    statusEl.textContent = 'wasm module loaded — ' + bytes.byteLength + ' bytes';
-  } catch (e) {
-    statusEl.textContent = 'failed to load wasm module';
-    console.error(e);
-    return;
-  }
-
-  function render() {
-    for (let i = 0; i < TOTAL; i++) {
-      const v = wasm.read_byte(i);
-      const el = document.getElementById('cell' + i);
-      el.textContent = v ? v.toString(16).padStart(2, '0') : '';
-      el.classList.remove('overflow');
-      if (i >= BUF_SIZE && v !== 0) el.classList.add('overflow');
-    }
-  }
-  render();
-
-  document.getElementById('vizwrite').addEventListener('click', async () => {
-    const input = document.getElementById('vizinput').value;
-    if (!input) return;
-    wasm.reset_region();
-    render();
-    for (let i = 0; i < input.length && i < TOTAL; i++) {
-      wasm.write_byte(i, input.charCodeAt(i));
-      render();
-      await new Promise(r => setTimeout(r, 60));
-    }
-    if (input.length > BUF_SIZE) {
-      msgEl.textContent = `Wrote ${input.length} bytes into a 16-byte buffer — ${input.length - BUF_SIZE} byte(s) landed in the adjacent region. This is the same mechanism as the strcpy()/gets() overflows above.`;
-    } else {
-      msgEl.textContent = `Wrote ${input.length} bytes — stayed within the 16-byte buffer, adjacent region untouched.`;
-    }
-  });
-
-  document.getElementById('vizreset').addEventListener('click', () => {
-    wasm.reset_region();
-    render();
-    msgEl.textContent = '';
-    document.getElementById('vizinput').value = '';
-  });
-})();
-
-// ---- Quiz ----
-(() => {
-  const questions = [
-    { q: "Why can't gets() be used safely?", opts: ["It's slow", "It takes no length argument", "It only works on Linux", "It requires root"], correct: 1 },
-    { q: "What does AddressSanitizer place around allocations?", opts: ["Encryption keys", "Poisoned redzones", "Backup copies", "Checksums"], correct: 1 },
-    { q: "A stack canary detects corruption of what?", opts: ["The heap", "Global variables", "The return address region", "File descriptors"], correct: 2 },
-    { q: "What's the actual bug in the memcpy() level?", opts: ["memcpy() is broken", "An unvalidated, caller-controlled length", "Wrong function name", "Missing semicolon"], correct: 1 },
-    { q: "What does ASLR randomize?", opts: ["Variable names", "Memory layout per run", "CPU clock speed", "File permissions"], correct: 1 },
-    { q: "Why is the array-indexing bug different from the others?", opts: ["It only affects floats", "No bound exists on the index itself, not a string length", "It can't be detected by ASan", "It only happens on Windows"], correct: 1 },
-  ];
-
-  const wrap = document.getElementById('quizwrap');
-  let score = 0, answered = 0;
-
-  questions.forEach((item, qi) => {
-    const card = document.createElement('div');
-    card.className = 'qcard';
-    const p = document.createElement('p');
-    p.className = 'qtext';
-    p.textContent = `${qi + 1}. ${item.q}`;
-    card.appendChild(p);
-
-    item.opts.forEach((opt, oi) => {
-      const btn = document.createElement('button');
-      btn.className = 'qopt';
-      btn.textContent = opt;
-      btn.addEventListener('click', () => {
-        if (btn.dataset.locked) return;
-        card.querySelectorAll('.qopt').forEach(b => b.dataset.locked = '1');
-        if (oi === item.correct) {
-          btn.classList.add('correct');
-          score++;
-        } else {
-          btn.classList.add('wrong');
-          card.children[item.correct + 1].classList.add('correct');
-        }
-        answered++;
-        if (answered === questions.length) {
-          const s = document.createElement('p');
-          s.id = 'quizscore';
-          s.textContent = `Score: ${score} / ${questions.length}`;
-          wrap.appendChild(s);
-        }
-      });
-      card.appendChild(btn);
-    });
-    wrap.appendChild(card);
-  });
-})();
-</script>
 </body>
 </html>
