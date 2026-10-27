@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSS-LAB-BOA — Level Guides</title>
+<style>
+:root{
+  --bg:#0e1410;--bg-raised:#141c17;--ink:#e8efe9;--ink-dim:#9fb3a6;--rule:#28352d;
+  --accent:#7fe0a0;--vuln:#e07a7a;--secure:#7fe0a0;--bonus:#d9b15a;
+  --mono:"SFMono-Regular","JetBrains Mono",Consolas,Menlo,monospace;
+  --serif:"Iowan Old Style","Georgia","Charter",serif;
+  color-scheme:dark; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+  --bg:#f3f1ea;--bg-raised:#fff;--ink:#1c2420;--ink-dim:#566058;--rule:#d9d4c6;
+  --accent:#1f7a46;--vuln:#a5342c;--secure:#1f7a46;--bonus:#8a6a1f; } }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.6;-webkit-font-smoothing:antialiased;}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:rgba(14,20,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);overflow-x:auto;}
+.navrow{display:flex;gap:1.1rem;padding:.8rem 1.2rem;font-family:var(--mono);font-size:.74rem;white-space:nowrap;align-items:center;}
+.navrow a{color:var(--ink-dim);text-decoration:none;} .navrow a:hover{color:var(--accent);}
+.navrow .sep{color:var(--rule);}
+.wrap{max-width:800px;margin:0 auto;padding:3rem 1.4rem 6rem;}
+.kicker{font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);margin:0 0 .7rem;}
+h1{font-size:clamp(1.7rem,5vw,2.3rem);margin:0 0 .9rem;font-weight:600;letter-spacing:-.01em;max-width:26ch;}
+.tagline{color:var(--ink-dim);max-width:60ch;margin:0 0 1.5rem;}
+.badge{display:inline-block;font-family:var(--mono);font-size:.68rem;padding:.15rem .5rem;border-radius:4px;border:1px solid currentColor;margin-left:.5rem;vertical-align:middle;}
+.badge.bonus{color:var(--bonus);}
+.badge.req{color:var(--secure);}
+section{margin:3.2rem 0;scroll-margin-top:3.4rem;}
+h2{font-family:var(--mono);font-size:.84rem;color:var(--accent);margin:0 0 1rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}
+h3{font-size:1.05rem;margin:1.4rem 0 .6rem;font-weight:600;}
+p{max-width:70ch;} .lede{color:var(--ink-dim);}
+code,.mono{font-family:var(--mono);}
+.fn{color:var(--vuln);font-family:var(--mono);font-size:.95em;} .fn.safe{color:var(--secure);}
+.cwe{display:inline-block;background:var(--bg-raised);border:1px solid var(--rule);border-radius:5px;padding:.2rem .6rem;font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+
+pre{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:.8rem 0 1.2rem;}
+pre.term{background:#000;}
+pre .c{color:var(--ink-dim);} pre .k{color:var(--vuln);} pre .k.safe{color:var(--secure);}
+pre .ok{color:var(--secure);} pre .err{color:var(--vuln);} pre .ghost{color:var(--ink-dim);}
+
+.codecols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media (max-width:640px){.codecols{grid-template-columns:1fr;}}
+.codecol h4{font-family:var(--mono);font-size:.74rem;margin:0 0 .4rem;letter-spacing:.03em;}
+.codecol.v h4{color:var(--vuln);} .codecol.s h4{color:var(--secure);}
+.codecol pre{margin:0;height:100%;}
+
+.tracebox{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin:.8rem 0 1.2rem;}
+.trow{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:1rem;padding:.6rem .9rem;border-bottom:1px solid var(--rule);}
+.trow:last-child{border-bottom:none;}
+.trow code{font-size:.78rem;color:var(--ink);white-space:nowrap;}
+.trow .expl{font-size:.86rem;color:var(--ink-dim);}
+
+.stackdiagram{font-family:var(--mono);font-size:.78rem;line-height:1.9;background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.3rem;overflow-x:auto;white-space:pre;color:var(--ink-dim);margin:.8rem 0 1.2rem;}
+.stackdiagram .hi{color:var(--vuln);font-weight:700;}
+.stackdiagram .hi2{color:var(--bonus);font-weight:700;}
+
+.callout{border-left:3px solid var(--bonus);background:var(--bg-raised);border-radius:0 8px 8px 0;padding:.9rem 1.1rem;margin:1rem 0;font-size:.9rem;color:var(--ink-dim);}
+.callout b{color:var(--ink);}
+.callout.warn{border-left-color:var(--vuln);}
+
+footer{margin-top:4rem;padding-top:1.4rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+a{color:var(--accent);}
+
+.levelcard{display:block;background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem;margin-bottom:.7rem;text-decoration:none;color:var(--ink);transition:border-color .15s;}
+.levelcard:hover{border-color:var(--accent);}
+.levelcard .num{font-family:var(--mono);font-size:.72rem;color:var(--ink-dim);}
+.levelcard h3{margin:.2rem 0 0;font-size:1.05rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">CSS-LAB-BOA</p>
+  <h1>Per-level lab guides</h1>
+  <p class="tagline">Deep-dive documentation for each level: theory, exact commands, the full ASan trace explained, and the secure rewrite — standalone, offline-readable, one file per level.</p>
+  <section>
+    <a class="levelcard" href="01-gets.html"><span class="num">LEVEL 01</span><h3>gets() — Unbounded Read</h3></a>
+    <a class="levelcard" href="02-strcpy.html"><span class="num">LEVEL 02</span><h3>strcpy() — Unchecked Copy</h3></a>
+    <a class="levelcard" href="03-strcat.html"><span class="num">LEVEL 03</span><h3>strcat() — Unchecked Concatenation</h3></a>
+    <a class="levelcard" href="04-sprintf.html"><span class="num">LEVEL 04</span><h3>sprintf() — Oversized Formatted Output</h3></a>
+    <a class="levelcard" href="05-memcpy.html"><span class="num">LEVEL 05</span><h3>memcpy() — Incorrect Byte Count</h3></a>
+    <a class="levelcard" href="06-array-indexing.html"><span class="num">LEVEL 06</span><h3>Array Indexing — Invalid Index</h3></a>
+    <a class="levelcard" href="07-bonus-redirect.html"><span class="num">LEVEL 07 · BONUS</span><h3>Return-Address Overwrite</h3></a>
+  </section>
+  <footer>CSS-LAB-BOA · Bhushan Ladgaonkar · TE Computer Engineering, Div A · FrCRCE</footer>
+</div>
+</body>
+</html>

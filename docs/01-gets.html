@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Level 01 — gets() — Unbounded Read | CSS-LAB-BOA</title>
+<style>
+:root{
+  --bg:#0e1410;--bg-raised:#141c17;--ink:#e8efe9;--ink-dim:#9fb3a6;--rule:#28352d;
+  --accent:#7fe0a0;--vuln:#e07a7a;--secure:#7fe0a0;--bonus:#d9b15a;
+  --mono:"SFMono-Regular","JetBrains Mono",Consolas,Menlo,monospace;
+  --serif:"Iowan Old Style","Georgia","Charter",serif;
+  color-scheme:dark; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+  --bg:#f3f1ea;--bg-raised:#fff;--ink:#1c2420;--ink-dim:#566058;--rule:#d9d4c6;
+  --accent:#1f7a46;--vuln:#a5342c;--secure:#1f7a46;--bonus:#8a6a1f; } }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.6;-webkit-font-smoothing:antialiased;}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:rgba(14,20,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);overflow-x:auto;}
+.navrow{display:flex;gap:1.1rem;padding:.8rem 1.2rem;font-family:var(--mono);font-size:.74rem;white-space:nowrap;align-items:center;}
+.navrow a{color:var(--ink-dim);text-decoration:none;} .navrow a:hover{color:var(--accent);}
+.navrow .sep{color:var(--rule);}
+.wrap{max-width:800px;margin:0 auto;padding:3rem 1.4rem 6rem;}
+.kicker{font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);margin:0 0 .7rem;}
+h1{font-size:clamp(1.7rem,5vw,2.3rem);margin:0 0 .9rem;font-weight:600;letter-spacing:-.01em;max-width:26ch;}
+.tagline{color:var(--ink-dim);max-width:60ch;margin:0 0 1.5rem;}
+.badge{display:inline-block;font-family:var(--mono);font-size:.68rem;padding:.15rem .5rem;border-radius:4px;border:1px solid currentColor;margin-left:.5rem;vertical-align:middle;}
+.badge.bonus{color:var(--bonus);}
+.badge.req{color:var(--secure);}
+section{margin:3.2rem 0;scroll-margin-top:3.4rem;}
+h2{font-family:var(--mono);font-size:.84rem;color:var(--accent);margin:0 0 1rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}
+h3{font-size:1.05rem;margin:1.4rem 0 .6rem;font-weight:600;}
+p{max-width:70ch;} .lede{color:var(--ink-dim);}
+code,.mono{font-family:var(--mono);}
+.fn{color:var(--vuln);font-family:var(--mono);font-size:.95em;} .fn.safe{color:var(--secure);}
+.cwe{display:inline-block;background:var(--bg-raised);border:1px solid var(--rule);border-radius:5px;padding:.2rem .6rem;font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+
+pre{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:.8rem 0 1.2rem;}
+pre.term{background:#000;}
+pre .c{color:var(--ink-dim);} pre .k{color:var(--vuln);} pre .k.safe{color:var(--secure);}
+pre .ok{color:var(--secure);} pre .err{color:var(--vuln);} pre .ghost{color:var(--ink-dim);}
+
+.codecols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media (max-width:640px){.codecols{grid-template-columns:1fr;}}
+.codecol h4{font-family:var(--mono);font-size:.74rem;margin:0 0 .4rem;letter-spacing:.03em;}
+.codecol.v h4{color:var(--vuln);} .codecol.s h4{color:var(--secure);}
+.codecol pre{margin:0;height:100%;}
+
+.tracebox{background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin:.8rem 0 1.2rem;}
+.trow{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:1rem;padding:.6rem .9rem;border-bottom:1px solid var(--rule);}
+.trow:last-child{border-bottom:none;}
+.trow code{font-size:.78rem;color:var(--ink);white-space:nowrap;}
+.trow .expl{font-size:.86rem;color:var(--ink-dim);}
+
+.stackdiagram{font-family:var(--mono);font-size:.78rem;line-height:1.9;background:var(--bg-raised);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.3rem;overflow-x:auto;white-space:pre;color:var(--ink-dim);margin:.8rem 0 1.2rem;}
+.stackdiagram .hi{color:var(--vuln);font-weight:700;}
+.stackdiagram .hi2{color:var(--bonus);font-weight:700;}
+
+.callout{border-left:3px solid var(--bonus);background:var(--bg-raised);border-radius:0 8px 8px 0;padding:.9rem 1.1rem;margin:1rem 0;font-size:.9rem;color:var(--ink-dim);}
+.callout b{color:var(--ink);}
+.callout.warn{border-left-color:var(--vuln);}
+
+footer{margin-top:4rem;padding-top:1.4rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.76rem;color:var(--ink-dim);}
+a{color:var(--accent);}
+</style>
+</head>
+<body>
+<nav><div class="navrow">
+  <a href="index.html">All levels</a><span class="sep">|</span>
+  <span style="color:var(--accent)">01</span><span class="sep">·</span><a href="02-strcpy.html">02</a><span class="sep">·</span><a href="03-strcat.html">03</a><span class="sep">·</span><a href="04-sprintf.html">04</a><span class="sep">·</span><a href="05-memcpy.html">05</a><span class="sep">·</span><a href="06-array-indexing.html">06</a><span class="sep">·</span><a href="07-bonus-redirect.html">07</a>
+</div></nav>
+<div class="wrap">
+
+  <p class="kicker">CSS-LAB-BOA <span style="opacity:.6">/ level 01</span></p>
+  <h1>gets() — Unbounded Read<span class="badge req">REQUIRED</span></h1>
+  <p class="tagline">The function that cannot be called safely under any circumstances, in any context, with any input — which is why it no longer exists in the C11 standard.</p>
+
+  <section id="overview">
+    <h2>1. Overview &amp; Vulnerability Theory</h2>
+    <h3>The vulnerable function</h3>
+    <p><span class="fn">gets(buffer)</span> — reads characters from stdin into buffer until a newline or EOF, with absolutely no length argument. There is no way to tell gets() how big the destination is.</p>
+    <h3>Why it fails at the memory level</h3>
+    <p>Every other unsafe function in this lab at least takes a size somewhere in its call signature that a careless programmer could get wrong. gets() doesn't even offer that chance — the API itself has no parameter for buffer size, so it is structurally incapable of a bounds check. Input of any length is copied byte-for-byte onto the stack starting at buffer's address and marching upward through adjacent memory.</p>
+    <div class="stackdiagram">higher addresses
+┌─────────────────────────┐
+│   saved return address   │  <span class="hi">&lt;- overflow eventually reaches here</span>
+├─────────────────────────┤
+│   saved base pointer     │
+├─────────────────────────┤
+│   local buffer (16B)     │  <span class="hi">&lt;- write starts here, grows upward</span>
+└─────────────────────────┘
+lower addresses
+
+stack grows DOWN, but an overflowing WRITE goes UP —
+toward the frame pointer and return address, not away from them.</div>
+    <h3>Classification</h3>
+    <p><span class="cwe">CWE-120 / CWE-242</span> — Buffer Copy without Checking Size of Input; CWE-242 specifically flags gets() as an inherently dangerous function that should never be used.</p>
+  </section>
+
+  <section id="demo">
+    <h2>2. Step-by-Step Practical Demonstration</h2>
+    <h3>Compile</h3>
+    <pre class="">gcc -g -fsanitize=address -fno-stack-protector -o /tmp/vuln vuln.c
+# or: make LEVEL=01-gets asan</pre>
+    <p class="lede" style="font-size:.86rem;">Via the project Makefile instead: <code>make LEVEL=01-gets vuln</code> / <code>make LEVEL=01-gets asan</code> — see <code>docs/HARDENING.md</code> for exactly why these specific flags are disabled here and nowhere else by default.</p>
+
+    <h3>Normal execution</h3>
+    <pre class="term">$ echo "Bhushan" | /tmp/vuln
+Enter your name: Hello, Bhushan!
+Returned safely.</pre>
+
+    <h3>Malicious input</h3>
+    <pre class="term">$ python3 -c "print('A'*40)" | /tmp/vuln
+Enter your name:
+=================================================================
+==16==ERROR: AddressSanitizer: stack-buffer-overflow on address 0xffff8b500030
+READ of size 41 at 0xffff8b500030 thread T0
+    #0 ...  (/usr/local/lib64/libasan.so.8+0x873d0)
+    #1 ... in vprintf
+    #2 ... in __interceptor_printf
+    #3 0x4009f0 in vulnerable_read levels/01-gets/vuln.c:7
+    #4 0x400a50 in main levels/01-gets/vuln.c:11
+
+Address 0xffff8b500030 is located in stack of thread T0 at offset 48 in frame
+    #0 0x400950 in vulnerable_read levels/01-gets/vuln.c:3
+
+  This frame has 1 object(s):
+    [32, 48) 'buffer' (line 4) &lt;== Memory access at offset 48 overflows this variable
+SUMMARY: AddressSanitizer: stack-buffer-overflow
+==16==ABORTING</pre>
+
+    <h3>Reading the ASan trace, line by line</h3>
+    <div class="tracebox"><div class="trow"><code>==NN==ERROR: AddressSanitizer: stack-buffer-overflow</code><div class="expl">ASan has detected an out-of-bounds access on stack memory. The PID-like number after the double equals is the process ID of the run that crashed.</div></div><div class="trow"><code>READ of size 41 at 0x...</code><div class="expl">The actual faulting operation. For gets(), the overflow write itself often isn't flagged — the overflow is caught one step later, when printf() tries to READ the corrupted, non-terminated string.</div></div><div class="trow"><code>#0 ... in vprintf</code><div class="expl">Stack frame 0: where the fault was detected — inside glibc's printf machinery, not your code directly.</div></div><div class="trow"><code>#3 0x... in vulnerable_read levels/.../vuln.c:7</code><div class="expl">Stack frame 3: your actual source line. This is the line to look at first — everything above it is library internals.</div></div><div class="trow"><code>Address 0x... is located in stack of thread T0 at offset 48 in frame vulnerable_read</code><div class="expl">Tells you exactly which stack frame owns the faulting address and at what byte offset within it.</div></div><div class="trow"><code>This frame has 1 object(s): [32, 48) 'buffer'</code><div class="expl">ASan names the specific local variable whose redzone was touched — here, confirming it really is `buffer` that got overrun.</div></div><div class="trow"><code>SUMMARY: AddressSanitizer: stack-buffer-overflow ...</code><div class="expl">One-line summary, useful for grepping logs or quickly confirming the violation type without reading the full trace.</div></div><div class="trow"><code>==NN==ABORTING</code><div class="expl">ASan terminates the process immediately on detection — by design, so corrupted state is never allowed to execute further.</div></div></div>
+  </section>
+
+  <section id="fix">
+    <h2>3. The Secure Rewrite</h2>
+    <div class="codecols">
+      <div class="codecol v"><h4>vuln.c</h4><pre class="">#include &lt;stdio.h&gt;
+
+void vulnerable_read(void) {
+    char buffer[16];
+    printf("Enter your name: ");
+    gets(buffer); /* VULNERABLE: no bounds
+                     checking, no length arg */
+    printf("Hello, %s!\n", buffer);
+}
+
+int main(void) {
+    vulnerable_read();
+    printf("Returned safely.\n");
+    return 0;
+}</pre></div>
+      <div class="codecol s"><h4>secure.c</h4><pre class="">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+void secure_read(void) {
+    char buffer[16];
+    printf("Enter your name: ");
+    if (fgets(buffer, sizeof(buffer), stdin)) {
+        buffer[strcspn(buffer, "\n")] = '\0';
+        printf("Hello, %s!\n", buffer);
+    }
+}
+
+int main(void) {
+    secure_read();
+    printf("Returned safely.\n");
+    return 0;
+}</pre></div>
+    </div>
+    <h3>What changed, and why it's actually safe</h3>
+    <p>fgets() takes the destination buffer's size as a mandatory third argument and will never write past it — it's structurally incapable of this overflow, the same way gets() was structurally incapable of avoiding it. The one adjustment needed is that fgets() keeps the trailing newline character (gets() discards it), so strcspn() is used to find and strip it.</p>
+    <h3>Proof: same malformed input, secure build</h3>
+    <pre class="term">$ python3 -c "print('A'*40)" | /tmp/secure
+Enter your name: Hello, AAAAAAAAAAAAAAA!
+Returned safely.
+# Input silently truncated to 15 chars + null terminator. No crash.</pre>
+  </section>
+
+  
+
+  <footer>CSS-LAB-BOA · Bhushan Ladgaonkar · TE Computer Engineering, Div A · FrCRCE · <a href="https://github.com/beeth73/CSS-LAB-BOA">repository</a></footer>
+</div>
+</body>
+</html>
