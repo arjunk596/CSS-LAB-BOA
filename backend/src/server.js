@@ -3,7 +3,9 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
+import crypto from "crypto";
 import { loadLevels } from "./levelRegistry.js";
+import { makeFlagMinter } from "./flagEngine.js";
 import {
   createSession,
   openShell,
@@ -18,6 +20,7 @@ const IDLE_TIMEOUT_MS = parseInt(process.env.SESSION_IDLE_TIMEOUT_MS || "900000"
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../public")));
+app.use("/docs", express.static(path.join(__dirname, "../../docs")));
 app.get("/api/levels", (_req, res) => res.json(loadLevels()));
 
 const server = app.listen(PORT, () => {
@@ -46,6 +49,11 @@ wss.on("connection", async (ws) => {
     return;
   }
 
+  // Per-session state
+  const sessionId = crypto.randomUUID();
+  const flagMinter = makeFlagMinter();
+  let currentLevelId = null;
+
   let container, exec, stream;
   try {
     container = await createSession();
@@ -60,7 +68,12 @@ wss.on("connection", async (ws) => {
   activeSessions.set(ws, { container, idleTimer: null });
   resetIdleTimer(ws);
 
-  stream.on("data", (chunk) => { if (ws.readyState === ws.OPEN) ws.send(chunk); });
+  stream.on("data", (chunk) => {
+    if (ws.readyState === ws.OPEN) ws.send(chunk);
+    // Check if this chunk contains a flag capture
+    const win = flagMinter.feed(chunk, sessionId, currentLevelId);
+    if (win) ws.send(JSON.stringify({ type: "flag", ...win }));
+  });
   stream.on("end", () => ws.close());
 
   ws.on("message", (data, isBinary) => {
@@ -71,6 +84,7 @@ wss.on("connection", async (ws) => {
       try {
         const msg = JSON.parse(data.toString());
         if (msg.type === "resize") { resizeShell(exec, msg.cols, msg.rows); return; }
+        if (msg.type === "setLevel") { currentLevelId = msg.levelId; return; }
       } catch (_) {}
     }
     stream.write(data);
@@ -103,24 +117,3 @@ async function shutdown(signal) {
 }
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
-
-app.use("/docs", express.static(path.join(__dirname, "../../docs")));
-
-
-import crypto from "crypto";
-import { makeFlagMinter } from "./flagEngine.js";
-
-// inside wss.on("connection", async (ws) => { ... }) :
-const sessionId = crypto.randomUUID();
-const flagMinter = makeFlagMinter();
-let currentLevelId = null;
-
-// in stream.on("data", ...):
-stream.on("data", (chunk) => {
-  if (ws.readyState === ws.OPEN) ws.send(chunk);
-  const win = flagMinter.feed(chunk, sessionId, currentLevelId);
-  if (win) ws.send(JSON.stringify({ type: "flag", ...win }));
-});
-
-// in ws.on("message", ...), alongside the existing resize branch:
-if (msg.type === "setLevel") { currentLevelId = msg.levelId; return; }

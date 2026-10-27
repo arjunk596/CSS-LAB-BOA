@@ -1,8 +1,28 @@
 services:
-  sandbox-image:
-    platform: linux/amd64
+  sandbox:
     build:
       context: .
       dockerfile: docker/sandbox.Dockerfile
     image: css-lab-boa-sandbox
-    command: ["true"]   # this service only exists to build/tag the image
+    container_name: css-lab-boa-sandbox
+    command: ["true"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: css-lab-boa-app
+    container_name: css-lab-boa-app
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - SANDBOX_IMAGE=css-lab-boa-sandbox
+      - MAX_SESSIONS=10
+      - SESSION_IDLE_TIMEOUT_MS=900000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      sandbox:
+        condition: service_completed_successfully
